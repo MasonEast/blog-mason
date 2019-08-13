@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+</head>
+
+<body>
+  <script>
+    class MyPromise {
+
+      //接受一个传入的参数，并判断其合法性
+      constructor(handle) {
+        const isFunc = v => typeof v === 'function'
+        if (!isFunc(handle)) {
+          throw new Error('传入的参数不合法，要求参数是函数!')
+        }
+        //赋予初始状态
+        this._status = 'PENDING'
+
+        this._value = undefined
+
+        handle(this._resolve.bind(this), this._reject.bind(this))
+      }
+      _resolve(v) {
+        this._status = 'FULFILLED'
+        this._value = v
+      }
+      _reject(err) {
+        this._status = 'err'
+        this._value = err
+      }
+      _then(fn1, fn2) {
+        return new MyPromise((resolve, reject) => {
+          function sucback(value) {
+            let ret = typeof fn1 === 'function' && fn1(value) || value;
+            if (ret && typeof ret['then'] == 'function') {    //判断 then中的 返回的是否是promise对象，如果是注册then方法
+              ret.then(function (value) {
+                resolve(value);
+              });
+            } else {
+              resolve(ret);
+            }
+          }
+          function errback(reason) {  //失败
+            reason = typeof fn2 === 'function' && fn2(reason) || reason;
+
+            reject(reason);
+          }
+          if (this._status === 'PENDING') {
+          } else if (this._status === 'FULFILLED') {
+            sucback(this._value);
+          } else {
+            errback(this._value);
+          }
+        })
+      }
+    }
+
+
+    //测试
+    // const p1 = new MyPromise((resolve, reject) => {
+    //   if (false) {
+    //     resolve('success')
+    //   } else {
+    //     reject('error')
+    //   }
+    // })
+    // p1._then(res => {
+    //   console.log(res)
+    // }, err => {
+    //   console.log(err)
+    // })._then(res => {
+    //   console.log(res)
+    // }, err => {
+    //   console.log(err)
+    // })
+    // new Promise(resolve => {
+    //   console.log('0')
+    //   resolve()
+    // }).then(() => {
+    //   new Promise(resolve => {
+    //     resolve()
+    //   }).then(() => {
+    //     console.log(3)
+    //   }).then(() => {
+    //     console.log(4)
+    //   })
+    //   console.log(1)
+    // }).then(() => {
+    //   console.log(2)
+    // })
+
+
+    // function timeWait(num, delay) {
+    //   return new Promise((resolve, reject) => {
+    //     setTimeout(() => {
+    //       console.log(num)
+    //       resolve(num)
+    //     }, delay)
+    //   })
+    // }
+
+    // async function a() {
+    //   let b = await timeWait(1, 1000)
+    //   let c = await timeWait(2, 2000)
+    //   let d = await timeWait(3, 3000)
+    //   console.log(b, c, d)
+    // }
+    // a()
+
+    function foo() {
+      return [1, 2, 3]
+    }
+
+    function bar() {
+      return {
+        x: 4,
+        y: 5,
+        z: 6
+      }
+    }
+
+    var [a, b, c] = foo()
+    var { x, y, z } = bar()
+    console.log(a, b, c, x, y, z)
+  </script>
+</body>
+
+</html>
