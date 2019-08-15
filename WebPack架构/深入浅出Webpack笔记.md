@@ -457,3 +457,452 @@ module.exports = {
 };
 ```
 使用Plugin的难点在于掌握Plugin本身提供的配置项
+
+
+## devServer
+
+### hot
+启用DevServer的模块热更新功能。
+
+### inline
+配置是否自动注入这个代理客户端到将运行在页面里的Chunk中，默认是自动注入。
+如果开启inline，DevServer会在构建完变化后的代码时通过代理客户端控制网页刷新
+如果关闭inline，DevServer将无法直接控制要开发的玩野，这时它会通过iframe的方式去运行要开发的网页。
+
+### contentBase
+
+配置DevServer HTTP服务器的文件根目录，默认情况下为当前执行目录，通常是项目根目录。假如你想把项目根目录下的public目录设置成DevServer服务器的文件根目录：
+
+```js
+devServer: {
+  contentBase： paht.join(__dirname, 'public'）
+
+}
+```
+
+DevServer服务器通过HTTP服务暴露出的文件分为两类：
+1. 暴露本地文件
+2. 暴露Webpack构建出的结果，由于构建出的结果交给了DevServer，所以你在使用了DevServer时在本地找不到构建出的文件。
+
+contentBase只能用来配置暴露本地文件的规则，可以通过`contentBase: false`来关闭暴露本地文件。
+
+### headers
+
+该配置项可以在HTTP响应中注入一些HTTP响应头：
+```js
+devServer: {
+  headers: {
+    'X-foo':'bar'
+  }
+}
+```
+
+### host
+
+用于配置DevServer服务监听的地址
+
+### allowedHosts
+
+配置一个白名单列表，只有HTTP请求的HOST在列表里才正常返回
+```js
+allowedHosts: [
+  // 匹配单个域名
+  'host.com',
+  'sub.host.com',
+  // host2.com 和所有的子域名 *.host2.com 都将匹配
+  '.host2.com'
+]
+```
+
+### https
+
+默认使用HTTP协议服务，它也能通过HTTPS协议服务，要切换HTTPS服务也很简单：
+```js
+devServer: {
+  https: true
+}
+```
+
+DevServer会自动为你生成一份HTTPS证书，也可以自己配置：
+
+```js
+devServer:{
+  https: {
+    key: fs.readFileSync('path/to/server.key'),
+    cert: fs.readFileSync('path/to/server.crt'),
+    ca: fs.readFileSync('path/to/ca.pem')
+  }
+}
+```
+
+### compress
+
+该配置决定是否启用gzip压缩，默认为false
+
+
+
+## 其他配置项
+
+### Target
+
+target配置项可以让webpack构建出针对不同运行环境的代码，target可以是以下之一：
+
+web：针对浏览器，默认选项，所有代码集中在一个文件里
+node： 针对Node.js，使用require语句加载chunk代码
+async-node： 针对Node.js，异步加载chunk代码
+webworker： 针对WebWorker
+electron-main： 针对Electron主线程
+elertron-renderer： 针对Electron渲染线程
+
+### Devtool
+
+配置Webpack如何生成Source Map, 默认值是false，想为构建出的代码生成Source Map可以：
+```js
+module.export = {
+  devtool: 'source-map'
+}
+```
+
+### Watch和WatchOptions
+
+它支持监听文件更新，在文件发生变化时重新编译，默认是关闭的：
+```js
+module.export = {
+  watch: true
+}
+```
+
+在使用DevServer时，监听模式默认是开启的
+
+watchOptions配置项可以更灵活的控制监听模式:
+
+```js
+module.export = {
+  // 只有在开启监听模式时，watchOptions 才有意义
+  // 默认为 false，也就是不开启
+  watch: true,
+  // 监听模式运行时的参数
+  // 在开启监听模式时，才有意义
+  watchOptions: {
+    // 不监听的文件或文件夹，支持正则匹配
+    // 默认为空
+    ignored: /node_modules/,
+    // 监听到变化发生后会等300ms再去执行动作，防止文件更新太快导致重新编译频率太高
+    // 默认为 300ms  
+    aggregateTimeout: 300,
+    // 判断文件是否发生变化是通过不停的去询问系统指定文件有没有变化实现的
+    // 默认每隔1000毫秒询问一次
+    poll: 1000
+  }
+}
+```
+
+### Externals
+
+配置Webpack要构建的代码中使用了哪些不用被打包的模块，也就是说这些模板是外部环境提供的，Webpack在打包时可以忽略它们。
+
+通过Externals可以告诉Webpack JavaScript运行环境已经内置了那些全局变量，针对这些全局变量不用打包进代码中而是直接使用全局变量：
+
+```js
+module.export = {
+  externals: {
+    // 把导入语句里的 jquery 替换成运行环境里的全局变量 jQuery
+    jquery: 'jQuery'
+  }
+}
+```
+
+###  ResolveLoader
+用来告诉Webpack如何去寻找Loader
+
+```js
+module.exports = {
+  resolveLoader:{
+    // 去哪个目录下寻找 Loader
+    modules: ['node_modules'],
+    // 入口文件的后缀
+    extensions: ['.js', '.json'],
+    // 指明入口文件位置的字段
+    mainFields: ['loader', 'main']
+  }
+}
+```
+该配置项通常用于加载本地的Loader
+
+
+## 整体配置结构
+
+```js
+const path = require('path');
+
+module.exports = {
+  // entry 表示 入口，Webpack 执行构建的第一步将从 Entry 开始，可抽象成输入。
+  // 类型可以是 string | object | array   
+  entry: './app/entry', // 只有1个入口，入口只有1个文件
+  entry: ['./app/entry1', './app/entry2'], // 只有1个入口，入口有2个文件
+  entry: { // 有2个入口
+    a: './app/entry-a',
+    b: ['./app/entry-b1', './app/entry-b2']
+  },
+
+  // 如何输出结果：在 Webpack 经过一系列处理后，如何输出最终想要的代码。
+  output: {
+    // 输出文件存放的目录，必须是 string 类型的绝对路径。
+    path: path.resolve(__dirname, 'dist'),
+
+    // 输出文件的名称
+    filename: 'bundle.js', // 完整的名称
+    filename: '[name].js', // 当配置了多个 entry 时，通过名称模版为不同的 entry 生成不同的文件名称
+    filename: '[chunkhash].js', // 根据文件内容 hash 值生成文件名称，用于浏览器长时间缓存文件
+
+    // 发布到线上的所有资源的 URL 前缀，string 类型
+    publicPath: '/assets/', // 放到指定目录下
+    publicPath: '', // 放到根目录下
+    publicPath: 'https://cdn.example.com/', // 放到 CDN 上去
+
+    // 导出库的名称，string 类型
+    // 不填它时，默认输出格式是匿名的立即执行函数
+    library: 'MyLibrary',
+
+    // 导出库的类型，枚举类型，默认是 var
+    // 可以是 umd | umd2 | commonjs2 | commonjs | amd | this | var | assign | window | global | jsonp ，
+    libraryTarget: 'umd', 
+
+    // 是否包含有用的文件路径信息到生成的代码里去，boolean 类型
+    pathinfo: true, 
+
+    // 附加 Chunk 的文件名称
+    chunkFilename: '[id].js',
+    chunkFilename: '[chunkhash].js',
+
+    // JSONP 异步加载资源时的回调函数名称，需要和服务端搭配使用
+    jsonpFunction: 'myWebpackJsonp',
+
+    // 生成的 Source Map 文件名称
+    sourceMapFilename: '[file].map',
+
+    // 浏览器开发者工具里显示的源码模块名称
+    devtoolModuleFilenameTemplate: 'webpack:///[resource-path]',
+
+    // 异步加载跨域的资源时使用的方式
+    crossOriginLoading: 'use-credentials',
+    crossOriginLoading: 'anonymous',
+    crossOriginLoading: false,
+  },
+
+  // 配置模块相关
+  module: {
+    rules: [ // 配置 Loader
+      {  
+        test: /\.jsx?$/, // 正则匹配命中要使用 Loader 的文件
+        include: [ // 只会命中这里面的文件
+          path.resolve(__dirname, 'app')
+        ],
+        exclude: [ // 忽略这里面的文件
+          path.resolve(__dirname, 'app/demo-files')
+        ],
+        use: [ // 使用那些 Loader，有先后次序，从后往前执行
+          'style-loader', // 直接使用 Loader 的名称
+          {
+            loader: 'css-loader',      
+            options: { // 给 html-loader 传一些参数
+            }
+          }
+        ]
+      },
+    ],
+    noParse: [ // 不用解析和处理的模块
+      /special-library\.js$/  // 用正则匹配
+    ],
+  },
+
+  // 配置插件
+  plugins: [
+  ],
+
+  // 配置寻找模块的规则
+  resolve: { 
+    modules: [ // 寻找模块的根目录，array 类型，默认以 node_modules 为根目录
+      'node_modules',
+      path.resolve(__dirname, 'app')
+    ],
+    extensions: ['.js', '.json', '.jsx', '.css'], // 模块的后缀名
+    alias: { // 模块别名配置，用于映射模块
+       // 把 'module' 映射 'new-module'，同样的 'module/path/file' 也会被映射成 'new-module/path/file'
+      'module': 'new-module',
+      // 使用结尾符号 $ 后，把 'only-module' 映射成 'new-module'，
+      // 但是不像上面的，'module/path/file' 不会被映射成 'new-module/path/file'
+      'only-module$': 'new-module', 
+    },
+    alias: [ // alias 还支持使用数组来更详细的配置
+      {
+        name: 'module', // 老的模块
+        alias: 'new-module', // 新的模块
+        // 是否是只映射模块，如果是 true 只有 'module' 会被映射，如果是 false 'module/inner/path' 也会被映射
+        onlyModule: true, 
+      }
+    ],
+    symlinks: true, // 是否跟随文件软链接去搜寻模块的路径
+    descriptionFiles: ['package.json'], // 模块的描述文件
+    mainFields: ['main'], // 模块的描述文件里的描述入口的文件的字段名称
+    enforceExtension: false, // 是否强制导入语句必须要写明文件后缀
+  },
+
+  // 输出文件性能检查配置
+  performance: { 
+    hints: 'warning', // 有性能问题时输出警告
+    hints: 'error', // 有性能问题时输出错误
+    hints: false, // 关闭性能检查
+    maxAssetSize: 200000, // 最大文件大小 (单位 bytes)
+    maxEntrypointSize: 400000, // 最大入口文件大小 (单位 bytes)
+    assetFilter: function(assetFilename) { // 过滤要检查的文件
+      return assetFilename.endsWith('.css') || assetFilename.endsWith('.js');
+    }
+  },
+
+  devtool: 'source-map', // 配置 source-map 类型
+
+  context: __dirname, // Webpack 使用的根目录，string 类型必须是绝对路径
+
+  // 配置输出代码的运行环境
+  target: 'web', // 浏览器，默认
+  target: 'webworker', // WebWorker
+  target: 'node', // Node.js，使用 `require` 语句加载 Chunk 代码
+  target: 'async-node', // Node.js，异步加载 Chunk 代码
+  target: 'node-webkit', // nw.js
+  target: 'electron-main', // electron, 主线程
+  target: 'electron-renderer', // electron, 渲染线程
+
+  externals: { // 使用来自 JavaScript 运行环境提供的全局变量
+    jquery: 'jQuery'
+  },
+
+  stats: { // 控制台输出日志控制
+    assets: true,
+    colors: true,
+    errors: true,
+    errorDetails: true,
+    hash: true,
+  },
+
+  devServer: { // DevServer 相关的配置
+    proxy: { // 代理到后端服务接口
+      '/api': 'http://localhost:3000'
+    },
+    contentBase: path.join(__dirname, 'public'), // 配置 DevServer HTTP 服务器的文件根目录
+    compress: true, // 是否开启 gzip 压缩
+    historyApiFallback: true, // 是否开发 HTML5 History API 网页
+    hot: true, // 是否开启模块热替换功能
+    https: false, // 是否开启 HTTPS 模式
+    },
+
+    profile: true, // 是否捕捉 Webpack 构建的性能信息，用于分析什么原因导致构建性能不佳
+
+    cache: false, // 是否启用缓存提升构建速度
+
+    watch: true, // 是否开始
+    watchOptions: { // 监听模式选项
+    // 不监听的文件或文件夹，支持正则匹配。默认为空
+    ignored: /node_modules/,
+    // 监听到变化发生后会等300ms再去执行动作，防止文件更新太快导致重新编译频率太高
+    // 默认为300ms 
+    aggregateTimeout: 300,
+    // 判断文件是否发生变化是不停的去询问系统指定文件有没有变化，默认每隔1000毫秒询问一次
+    poll: 1000
+  },
+}
+```
+
+## 多种配置类型
+
+除了通过导出一个Object来描述Webpack所需的配置外，还有其他更灵活的方式。
+
+### 导出一个Function
+
+在大多数时候你需要从同一份源码中构建出多份代码，一份用于开发时，一份用于发布线上。
+
+如果采用导出一个Object来描述Webpack所需的配置的文件，需要写两个文件。在启动时通过`webpack --config webpack.config.js`来指定使用哪个配置文件。
+
+采用导出一个Function的方式，能通过JavaScript灵活的控制配置，做到只用一个配置文件就能完成以上要求。
+
+```js
+const path = require('path');
+const UglifyJsPlugin = require('webpack/lib/optimize/UglifyJsPlugin');
+
+module.exports = function (env = {}, argv) {
+  const plugins = [];
+
+  const isProduction = env['production'];
+
+  // 在生成环境才压缩
+  if (isProduction) {
+    plugins.push(
+      // 压缩输出的 JS 代码
+      new UglifyJsPlugin()
+    )
+  }
+
+  return {
+    plugins: plugins,
+    // 在生成环境不输出 Source Map
+    devtool: isProduction ? undefined : 'source-map',
+  };
+}
+```
+
+在运行 Webpack 时，会给这个函数传入2个参数，分别是：
+
+env：当前运行时的 Webpack 专属环境变量，env 是一个 Object。读取时直接访问 Object 的属性，设置它需要在启动 Webpack 时带上参数。例如启动命令是 `webpack --env.production --env.bao=foo`时，则 env 的值是 `{"production":"true","bao":"foo"}`。
+argv：代表在启动 Webpack 时所有通过命令行传入的参数，例如 --config、--env、--devtool，可以通过 webpack -h 列出所有 Webpack 支持的命令行参数。
+就以上配置文件而言，在开发时执行命令 webpack 构建出方便调试的代码，在需要构建出发布到线上的代码时执行 `webpack --env.production` 构建出压缩的代码。
+
+### 导出一个返回Promise的函数
+```js
+module.exports = function(env = {}, argv) {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      resolve({
+        // ...
+      })
+    }, 5000)
+  })
+}
+```
+
+### 导出多份配置
+
+Wepack支持导出一个数组，数组汇总可以包含每份配置，并且每份配置都会执行一遍构建。
+
+```js
+module.exports = [
+  // 采用 Object 描述的一份配置
+  {
+    // ...
+  },
+  // 采用函数描述的一份配置
+  function() {
+    return {
+      // ...
+    }
+  },
+  // 采用异步函数描述的一份配置
+  function() {
+    return Promise();
+  }
+]
+```
+
+这特别适合用Webpack构建一个要上传到Npm仓库的库，因为库中可能需要包含多种模块化格式的代码，例如CommonJS， UMD
+
+
+## 总结
+
+从前面的配置看来选项很多，通常可用如下经验去判断如何配置Webpack：
+
+1. 想让源文件加入到构建流程中去被Webpack控制，配置entry
+2. 想自定义输出文件的位置和名称，配置output
+3. 想自定义寻找依赖模块时的策略， 配置resolve
+4. 想自定义解析和转换文件的策略， 配置module， 通常是配置module.rules里的Loader
+5. 其他的大部分需求可能要通过Plugin去实现，配置Plugin
+
+
