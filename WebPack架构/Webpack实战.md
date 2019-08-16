@@ -283,7 +283,89 @@ module.exports = {
 };
 ```
 
+## 使用React框架
+
+### React语法特征
+
+React项目的代码特征是JSX和Class语法
+
+### React与Babel
+
+要在使用Babel的项目中接入React框架是很简单的，只需要加入所依赖的Presets： babel-preset-react
+
+```js
+//安装 React 基础依赖
+npm i -D react react-dom
+//安装 babel 完成语法转换所需依赖
+npm i -D babel-preset-react
+
+//修改.babelrc配置文件加入React Presets
+"presets": [
+  "react"
+]
+```
+
+### React 与 Typescript
+
+1. 使用了jsx语法的文件后缀必须是tsx
+2. 由于React不是采用TypeScript编写的，需要安装react和react-dom对应的TypeScript接口描述模块`@types/react`和`types/react-dom`才能通过编译。
+
+修改ts编译器配置文件tsconfig.json增加对jsx语法的支持：
+```js
+{
+  "compilerOptions": {
+    "jsx": "react"
+  }
+}
+```
+
+安装依赖：`npm i react react-dom @types/react @types/react-dom`
+
+```js
+const path = require('path');
+
+module.exports = {
+  // TS 执行入口文件
+  entry: './main',
+  output: {
+    filename: 'bundle.js',
+    path: path.resolve(__dirname, './dist'),
+  },
+  resolve: {
+    // 先尝试 ts，tsx 后缀的 TypeScript 源码文件 
+    extensions: ['.ts', '.tsx', '.js',] 
+  },
+  module: {
+    rules: [
+      {
+        // 同时匹配 ts，tsx 后缀的 TypeScript 源码文件 
+        test: /\.tsx?$/,
+        loader: 'awesome-typescript-loader'
+      }
+    ]
+  },
+  devtool: 'source-map',// 输出 Source Map 方便在浏览器里调试 TypeScript 代码
+};
+```
+
+## 使用Vue框架
+
+Vue官方提供了对应的`vue-loader`可以非常方便的完成单文件组件的转换
+```js
+
+//Vue 框架运行需要的库
+npm i -S vue
+//构建所需的依赖
+npm i -D vue-loader css-loader vue-template-compiler
 
 
-
+module: {
+  rules: [
+    {
+      test: /\.vue$/,
+      use: ['vue-loader']
+    }
+  ]
+}
+```
 
