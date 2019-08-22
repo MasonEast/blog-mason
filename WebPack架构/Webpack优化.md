@@ -590,9 +590,567 @@ module.exports = {
 
 #### CDN加速
 
+##### CDN
+前面通过压缩代码的手段来减小网络传输大小，但实际上最影响用户体验的还是网页首次打开时的加载等待。导致这个问题的根本原因是网络传输过程耗时大，CDN的作用就是**加速网络传输**。
+
+CDN又叫内容分发网络，通过把资源部署到世界各地，用户在访问时按照就近原则从用户最近的服务器获取资源，从而加速资源的获取速度。**CDN其实是通过优化物理链路层传输过程中的网速有限，丢包等问题来提升网速**的。
+
+##### 接入CDN
+
+要给网站接入CDN，需要把网页的静态资源上传到CDN服务上去，在服务这些静态资源的时候需要通过CDN服务提供的URL地址去访问。
+
+CDN一般都会给资源开启很长时间的缓存，例如用户从CDN上获取到了index.html文件，即使之后的发布操作把index.html文件重新覆盖了，但是用户在很长的一段时间内还是运行之前的版本，这会导致新的发布不能立即生效。
+
+避免上面问题的做法：
+
+1. 针对HTML文件： 不开启缓存，把HTML放到自己的服务器上，而不是CDN上，同时关闭自己服务器上的缓存，自己的服务器只提供HTML文件和数据接口。
+2. 针对静态的JS，CSS， 图片等文件： 开启CDN缓存，上传到CDN服务上，同时给每个文件名带上由文件内容算出的Hash值，带上Hash的原因是文件名会随着文件内容而变化，只要文件发生变化其对应的URL就会变化，它就会被重新下载，无论缓存时间有多长。
+
+由于所有静态资源都放到了同一个 CDN 服务的域名下，也就是上面的 cdn.com。 如果网页的资源很多，例如有很多图片，就会导致资源的加载被阻塞，因为同时只能加载几个，必须等其它资源加载完才能继续加载。 要解决这个问题，可以把这些静态资源分散到不同的 CDN 服务上去。
+
+使用了多个域名后又会带来一个新的问题： 增加域名解析时间，是否采用多域名分散资源需要根据自己的需求去衡量得失。
+
+##### 用Webpack实现CDN的接入
+
+构建需要实现以下几点：
+
+1. 静态资源的导入URL需要变成指向CDN服务的绝对路径的URL而不是相对于HTML文件的URL
+2. 静态资源的文件名称需要带上有文件内容算出来的Hash值，以防止被缓存
+3. 不同类型的资源放到不同域名的CDN服务上去，以防止资源的并行加载被阻塞
+
+```js
+
+const path = require('path');
+const ExtractTextPlugin = require('extract-text-webpack-plugin');
+const {WebPlugin} = require('web-webpack-plugin');
+
+module.exports = {
+  // 省略 entry 配置...
+  output: {
+    // 给输出的 JavaScript 文件名称加上 Hash 值
+    filename: '[name]_[chunkhash:8].js',
+    path: path.resolve(__dirname, './dist'),
+    // 指定存放 JavaScript 文件的 CDN 目录 URL
+    publicPath: '//js.cdn.com/id/',
+  },
+  module: {
+    rules: [
+      {
+        // 增加对 CSS 文件的支持
+        test: /\.css$/,
+        // 提取出 Chunk 中的 CSS 代码到单独的文件中
+        use: ExtractTextPlugin.extract({
+          // 压缩 CSS 代码
+          use: ['css-loader?minimize'],
+          // 指定存放 CSS 中导入的资源（例如图片）的 CDN 目录 URL
+          publicPath: '//img.cdn.com/id/'
+        }),
+      },
+      {
+        // 增加对 PNG 文件的支持
+        test: /\.png$/,
+        // 给输出的 PNG 文件名称加上 Hash 值
+        use: ['file-loader?name=[name]_[hash:8].[ext]'],
+      },
+      // 省略其它 Loader 配置...
+    ]
+  },
+  plugins: [
+    // 使用 WebPlugin 自动生成 HTML
+    new WebPlugin({
+      // HTML 模版文件所在的文件路径
+      template: './template.html',
+      // 输出的 HTML 的文件名称
+      filename: 'index.html',
+      // 指定存放 CSS 文件的 CDN 目录 URL
+      stylePublicPath: '//css.cdn.com/id/',
+    }),
+    new ExtractTextPlugin({
+      // 给输出的 CSS 文件名称加上 Hash 值
+      filename: `[name]_[contenthash:8].css`,
+    }),
+    // 省略代码压缩插件配置...
+  ],
+};
+
+```
+以上代码最核心的部分是通过publicPath参数设置存放静态资源的CDN目录URL，设置好publicPaht，WebPlugin在生成HTML文件和`css-loader`转换CSS代码时，会考虑到配置中的publicPath，用对应的线上地址替换原来的相对地址。
+
+#### 使用Tree Shaking
+
+##### 认识Tree Shaking
+
+Tree Shaking可以用来剔除JS中用不上的死代码，它**依赖静态的ES6模块化语法**。因为ES6模块化语法是静态的（导入导出语句中的路径必须是静态的字符串，而且不能放入其他代码块中）
+
+Tree Shaking的局限性：
+1. 不会对entry入口文件做Tree Shaking
+2. 不会对异步分割出去的代码做Tree Shaking
+
+##### 接入Tree Shaking
+
+为了把采用ES6模块化的代码交给WebPack，需要配置Babel让其保留ES6模块化语句，修改`.babelrc`：
+
+```js
+{
+  "presets": [
+    [
+      "env",
+      {
+        "modules": false  //关闭Babel的模块转换功能，保留原本的ES6模块化语法
+      }
+    ]
+  ]
+}
+```
+
+要剔除用不上的代码还得经过 UglifyJS 去处理一遍。 要接入 UglifyJS 也很简单，不仅可以通过加入 UglifyJSPlugin 去实现， 也可以简单的通过在启动 Webpack 时带上 `--optimize-minimize` 参数。
+
+当你的项目使用了大量第三方库时，你会发现 Tree Shaking 似乎不生效了，原因是大部分 Npm 中的代码都是采用的 CommonJS 语法， 这导致 Tree Shaking 无法正常工作而降级处理。 但幸运的时有些库考虑到了这点，这些库在发布到 Npm 上时会同时提供两份代码，一份采用 CommonJS 模块化语法，一份采用 ES6 模块化语法。 并且在 package.json 文件中分别指出这两份代码的入口。
+
+以Redux为例：
+node_modules/redux
+|-- es
+|   |-- index.js # 采用 ES6 模块化语法
+|-- lib
+|   |-- index.js # 采用 ES5 模块化语法
+|-- package.json
+
+package.json 文件中有两个字段：
+```js
+{
+  "main": "lib/index.js", // 指明采用 CommonJS 模块化的代码入口
+  "jsnext:main": "es/index.js" // 指明采用 ES6 模块化的代码入口
+}
+```
+
+mainFields用于配置采用哪个字段作为模块的入口：
+
+```js
+module.exports = {
+  resolve: {
+    // 针对 Npm 中的第三方模块优先采用 jsnext:main 中指向的 ES6 模块化语法的文件
+    mainFields: ['jsnext:main', 'browser', 'main']
+  },
+};
+```
+
+#### 提取公共代码
+
+大型网站通常由多个页面组成，每个页面都是一个独立的单页应用。但由于所有的页面都采用同样的技术栈，以及使用同一套样式代码，这导致这些页面之间有很多相同的代码。
+
+如果每个页面都包含公共代码会导致：
+
+1. 相同的资源被重复的加载，浪费用户的流量和服务器的成本
+2. 每个页面需要加载的资源太大，导致网页首屏加载缓慢，影响用户体验
+
+采用以下原则提取公共代码：
+
+1. 根据网站所使用的技术栈，找出网站所有页面都需要用到的基础库，比如react，react-dom等库，把它们提取到一个单独的文件，一般把这个文件叫做`base.js`，因为它包含所有网页的基础运行环境
+2. 在剔除了各个页面中被`base.js`包含的部分代码外，再找出所有页面都依赖的公共部分的代码提取到`common.js`
+3. 再为每个网页都生成一个单独的文件，这个文件中不再包含`base.js`和`common.js`中包含的部分，而只包含各个页面需要的部分代码
+
+找出所有页面都依赖的的公共代码，并提取出来放到common.js中，为什么还需要再把网站所有页面都需要的基础库提取到base.js中，原因是为了**长期缓存base.js**
+
+##### 通过Webpack提取公共代码
+
+Webpack内置了专门用于提取多个Chunk中公共部分的插件`CommonsChunkPlugin`：
+
+```js
+
+const CommonsChunkPlugin = require('webpack/lib/optimize/CommonsChunkPlugin');
+
+new CommonsChunkPlugin({
+  // 从哪些 Chunk 中提取
+  chunks: ['a', 'b'],
+  // 提取出的公共部分形成一个新的 Chunk，这个新 Chunk 的名称
+  name: 'common'
+})
+
+```
+
+每个CommonChunkPlugin实例都会生成一个新的Chunk，这个新Chunk中包含了被提取出的代码，在使用过程中必须制定`name`属性，以告诉插件新生成的Chunk名称，其中chunks属性指明从哪些已有的Chunk中提取，如果不填，默认会从所有已知的Chunk中提取。
+
+Chunk是一系列文件的集合，一个Chunk包含这个Chunk的入口文件和入口文件依赖的文件。
+
+首先需要先配置一个Chunk，这个Chunk中只依赖所有页面都依赖的基础库以及所有页面都使用的样式，为此需要在项目中写一个`base.js`文件来描述base Chunk所依赖的模块
+
+```js
+// 所有页面都依赖的基础库
+import 'react';
+import 'react-dom';
+// 所有页面都使用的样式
+import './base.css';
+```
+
+接着再修改Webpack配置，在entry中加入base：
+
+```js
+module.exports = {
+  entry: {
+    base: './base.js'
+  },
+};
+```
+
+以上就完成了对新Chunk base的配置
+
+为了从common中提取出base也包含的部分，还需要配置一个CommonsChunkPlugin：
+
+```js
+new CommonsChunkPlugin({
+  chunks: ['common', 'base'],
+  name: 'base'
+})
+```
+
+以上方法可能会出现`common.js`中没有代码的情况，原因是去掉基础运行库外很难再找到所有页面都会用上的模块，你可以采取以下做法之一：
+
+1. CommonsChunkPlugin提供了一个选项`minChunks`，表示文件要被提取出来时需要在指定的Chunks中最小出现最小次数。假如 minChunks=2、chunks=['a','b','c','d']，任何一个文件只要在 ['a','b','c','d'] 中任意两个以上的 Chunk 中都出现过，这个文件就会被提取出来。 你可以根据自己的需求去调整 minChunks 的值，minChunks 越小越多的文件会被提取到 common.js 中去，但这也会导致部分页面加载的不相关的资源越多； minChunks 越大越少的文件会被提取到 common.js 中去，但这会导致 common.js 变小、效果变弱。
+2. 根据各个页面之间的相关性选取其中的部分页面用 CommonsChunkPlugin 去提取这部分被选出的页面的公共部分，而不是提取所有页面的公共部分，而且这样的操作可以叠加多次。 这样做的效果会很好，但缺点是配置复杂，你需要根据页面之间的关系去思考如何配置，该方法不通用。
+
+#### 分割代码按需加载
+
+一个网页需要承载的功能越来越多，对于采用单页应用作为前端架构的网站来说，会面临着一个网页需要加载的代码量很大的问题，因为许多功能都集中的做到了一个HTML里，这会导致网页加载缓慢，交互卡顿。
+
+在单页应用做按需加载优化时，一般采用以下原则：
+
+1. 把整个网站划分成一个个小功能，再按照每个功能的相关程度把它们分成几类
+2. 把每一类合并为一个Chunk，按需加载对应的Chunk
+3. 对于用户首次打开你的网站时需要看到的画面所对应的功能，不要对它们按需加载，而是放到执行入口所在的Chunk中，以降低用户能感知的网页加载时间。
+4. 对于个别依赖大量代码的功能点，例如依赖Chart.js去画图表，依赖flv.js播放视频的功能点，可再对其进行按需加载。
+
+被分割出去的代码的加载需要一定的时机去触发，也就是当用户操作到了或者即将操作到对应的功能时再去加载对应的代码，被分割出去的代码的加载时机需要开发者自己去根据网页的需求衡量。
+
+由于被分割出去进行按需加载的代码在加载过程中也需要耗时，你可以预言用户接下来的可能会进行的操作，并提前加载好对应的代码，从而让用户感知不到网络加载时间。
+
+##### 用Webpack实现按需加载
+
+```js
+//main.js
+window.document.getElementById('btn').addEventListener('click', function () {
+  // 当按钮被点击后才去加载 show.js 文件，文件加载成功后执行文件导出的函数
+  import(/* webpackChunkName: "show" */ './show').then((show) => {
+    show('Webpack');
+  })
+});
+//show.js
+module.exports = function (content) {
+  window.alert('Hello ' + content);
+};
 
 
+module.exports = {
+  // JS 执行入口文件
+  entry: {
+    main: './main.js',
+  },
+  output: {
+    // 为从 entry 中配置生成的 Chunk 配置输出文件的名称
+    filename: '[name].js',
+    // 为动态加载的 Chunk 配置输出文件的名称
+    chunkFilename: '[name].js',
+  }
+};
+```
+
+Babel 报出错误说不认识 import(*) 语法。 导致这个问题的原因是 import(*) 语法还没有被加入到ECMAScript 标准中去， 为此我们需要安装一个 Babel 插件 babel-plugin-syntax-dynamic-import，并且将其加入到 .babelrc 中去：
+
+```js
+{
+  "presets": [
+    "env",
+    "react"
+  ],
+  "plugins": [
+    "syntax-dynamic-import"
+  ]
+}
+```
 
 ### 减少用户能感知到的加载时间
 
-### 提升流畅度
+#### 使用Prepack
+
+在前面的优化方法中提到了代码压缩和分块，这些都是在网络加载层面的优化，除此之外还可以优化代码在运行时的效率，Prepack 就是为此而生。
+
+Prepack 由 Facebook 开源，它采用较为激进的方法：在保持运行结果一致的情况下，改变源代码的运行逻辑，输出性能更高的 JavaScript 代码。 实际上 Prepack 就是一个部分求值器，编译代码时提前将计算结果放到编译后的代码中，而不是在代码运行时才去求值。
+
+#### 开启Scope Hoisting
+
+从中可以看出开启 Scope Hoisting 后，函数申明由两个变成了一个，util.js 中定义的内容被直接注入到了 main.js 对应的模块中。 这样做的好处是：
+
+代码体积更小，因为函数申明语句会产生大量代码；
+代码在运行时因为创建的函数作用域更少了，内存开销也随之变小。
+Scope Hoisting 的实现原理其实很简单：分析出模块之间的依赖关系，尽可能的把打散的模块合并到一个函数中去，但前提是不能造成代码冗余。 因此只有那些被引用了一次的模块才能被合并。
+
+由于 Scope Hoisting 需要分析出模块之间的依赖关系，因此源码必须采用 ES6 模块化语句，不然它将无法生效。
+
+```js
+const ModuleConcatenationPlugin = require('webpack/lib/optimize/ModuleConcatenationPlugin');
+
+module.exports = {
+  plugins: [
+    // 开启 Scope Hoisting
+    new ModuleConcatenationPlugin(),
+  ],
+};
+```
+
+#### 输出分析
+在启动 Webpack 时，支持两个参数，分别是：
+
+--profile：记录下构建过程中的耗时信息；
+--json：以 JSON 的格式输出构建结果，最后只输出一个 .json 文件，这个文件中包括所有构建相关的信息。
+在启动 Webpack 时带上以上两个参数，启动命令如下 webpack --profile --json > stats.json，你会发现项目中多出了一个 stats.json 文件。 这个 stats.json 文件是给后面介绍的可视化分析工具使用的。
+
+###### 官方可视化分析工具
+
+ Webpack Analyse
+
+webpack-bundle-analyzer
+
+
+### 优化总结
+
+#### 侧重优化开发体验的配置文件webpack.config.js
+
+```js
+const path = require('path');
+const CommonsChunkPlugin = require('webpack/lib/optimize/CommonsChunkPlugin');
+const {AutoWebPlugin} = require('web-webpack-plugin');
+const HappyPack = require('happypack');
+
+// 自动寻找 pages 目录下的所有目录，把每一个目录看成一个单页应用
+const autoWebPlugin = new AutoWebPlugin('./src/pages', {
+  // HTML 模版文件所在的文件路径
+  template: './template.html',
+  // 提取出所有页面公共的代码
+  commonsChunk: {
+    // 提取出公共代码 Chunk 的名称
+    name: 'common',
+  },
+});
+
+module.exports = {
+  // AutoWebPlugin 会找为寻找到的所有单页应用，生成对应的入口配置，
+  // autoWebPlugin.entry 方法可以获取到生成入口配置
+  entry: autoWebPlugin.entry({
+    // 这里可以加入你额外需要的 Chunk 入口
+    base: './src/base.js',
+  }),
+  output: {
+    filename: '[name].js',
+  },
+  resolve: {
+    // 使用绝对路径指明第三方模块存放的位置，以减少搜索步骤
+    // 其中 __dirname 表示当前工作目录，也就是项目根目录
+    modules: [path.resolve(__dirname, 'node_modules')],
+    // 针对 Npm 中的第三方模块优先采用 jsnext:main 中指向的 ES6 模块化语法的文件，使用 Tree Shaking 优化
+    // 只采用 main 字段作为入口文件描述字段，以减少搜索步骤
+    mainFields: ['jsnext:main', 'main'],
+  },
+  module: {
+    rules: [
+      {
+        // 如果项目源码中只有 js 文件就不要写成 /\.jsx?$/，提升正则表达式性能
+        test: /\.js$/,
+        // 使用 HappyPack 加速构建
+        use: ['happypack/loader?id=babel'],
+        // 只对项目根目录下的 src 目录中的文件采用 babel-loader
+        include: path.resolve(__dirname, 'src'),
+      },
+      {
+        test: /\.js$/,
+        use: ['happypack/loader?id=ui-component'],
+        include: path.resolve(__dirname, 'src'),
+      },
+      {
+        // 增加对 CSS 文件的支持
+        test: /\.css$/,
+        use: ['happypack/loader?id=css'],
+      },
+    ]
+  },
+  plugins: [
+    autoWebPlugin,
+    // 使用 HappyPack 加速构建
+    new HappyPack({
+      id: 'babel',
+      // babel-loader 支持缓存转换出的结果，通过 cacheDirectory 选项开启
+      loaders: ['babel-loader?cacheDirectory'],
+    }),
+    new HappyPack({
+      // UI 组件加载拆分
+      id: 'ui-component',
+      loaders: [{
+        loader: 'ui-component-loader',
+        options: {
+          lib: 'antd',
+          style: 'style/index.css',
+          camel2: '-'
+        }
+      }],
+    }),
+    new HappyPack({
+      id: 'css',
+      // 如何处理 .css 文件，用法和 Loader 配置中一样
+      loaders: ['style-loader', 'css-loader'],
+    }),
+    // 4-11提取公共代码
+    new CommonsChunkPlugin({
+      // 从 common 和 base 两个现成的 Chunk 中提取公共的部分
+      chunks: ['common', 'base'],
+      // 把公共的部分放到 base 中
+      name: 'base'
+    }),
+  ],
+  watchOptions: {
+    // 4-5使用自动刷新：不监听的 node_modules 目录下的文件
+    ignored: /node_modules/,
+  }
+};
+```
+
+侧重优化输出质量的配置文件`webpack-dist.config.js`
+```js
+const path = require('path');
+const DefinePlugin = require('webpack/lib/DefinePlugin');
+const ModuleConcatenationPlugin = require('webpack/lib/optimize/ModuleConcatenationPlugin');
+const CommonsChunkPlugin = require('webpack/lib/optimize/CommonsChunkPlugin');
+const ExtractTextPlugin = require('extract-text-webpack-plugin');
+const {AutoWebPlugin} = require('web-webpack-plugin');
+const HappyPack = require('happypack');
+const ParallelUglifyPlugin = require('webpack-parallel-uglify-plugin');
+
+// 自动寻找 pages 目录下的所有目录，把每一个目录看成一个单页应用
+const autoWebPlugin = new AutoWebPlugin('./src/pages', {
+  // HTML 模版文件所在的文件路径
+  template: './template.html',
+  // 提取出所有页面公共的代码
+  commonsChunk: {
+    // 提取出公共代码 Chunk 的名称
+    name: 'common',
+  },
+  // 指定存放 CSS 文件的 CDN 目录 URL
+  stylePublicPath: '//css.cdn.com/id/',
+});
+
+module.exports = {
+  // AutoWebPlugin 会找为寻找到的所有单页应用，生成对应的入口配置，
+  // autoWebPlugin.entry 方法可以获取到生成入口配置
+  entry: autoWebPlugin.entry({
+    // 这里可以加入你额外需要的 Chunk 入口
+    base: './src/base.js',
+  }),
+  output: {
+    // 给输出的文件名称加上 Hash 值
+    filename: '[name]_[chunkhash:8].js',
+    path: path.resolve(__dirname, './dist'),
+    // 指定存放 JavaScript 文件的 CDN 目录 URL
+    publicPath: '//js.cdn.com/id/',
+  },
+  resolve: {
+    // 使用绝对路径指明第三方模块存放的位置，以减少搜索步骤
+    // 其中 __dirname 表示当前工作目录，也就是项目根目录
+    modules: [path.resolve(__dirname, 'node_modules')],
+    // 只采用 main 字段作为入口文件描述字段，以减少搜索步骤
+    mainFields: ['jsnext:main', 'main'],
+  },
+  module: {
+    rules: [
+      {
+        // 如果项目源码中只有 js 文件就不要写成 /\.jsx?$/，提升正则表达式性能
+        test: /\.js$/,
+        // 使用 HappyPack 加速构建
+        use: ['happypack/loader?id=babel'],
+        // 只对项目根目录下的 src 目录中的文件采用 babel-loader
+        include: path.resolve(__dirname, 'src'),
+      },
+      {
+        test: /\.js$/,
+        use: ['happypack/loader?id=ui-component'],
+        include: path.resolve(__dirname, 'src'),
+      },
+      {
+        // 增加对 CSS 文件的支持
+        test: /\.css$/,
+        // 提取出 Chunk 中的 CSS 代码到单独的文件中
+        use: ExtractTextPlugin.extract({
+          use: ['happypack/loader?id=css'],
+          // 指定存放 CSS 中导入的资源（例如图片）的 CDN 目录 URL
+          publicPath: '//img.cdn.com/id/'
+        }),
+      },
+    ]
+  },
+  plugins: [
+    autoWebPlugin,
+    // 4-14开启ScopeHoisting
+    new ModuleConcatenationPlugin(),
+    // 4-3使用HappyPack
+    new HappyPack({
+      // 用唯一的标识符 id 来代表当前的 HappyPack 是用来处理一类特定的文件
+      id: 'babel',
+      // babel-loader 支持缓存转换出的结果，通过 cacheDirectory 选项开启
+      loaders: ['babel-loader?cacheDirectory'],
+    }),
+    new HappyPack({
+      // UI 组件加载拆分
+      id: 'ui-component',
+      loaders: [{
+        loader: 'ui-component-loader',
+        options: {
+          lib: 'antd',
+          style: 'style/index.css',
+          camel2: '-'
+        }
+      }],
+    }),
+    new HappyPack({
+      id: 'css',
+      // 如何处理 .css 文件，用法和 Loader 配置中一样
+      // 通过 minimize 选项压缩 CSS 代码
+      loaders: ['css-loader?minimize'],
+    }),
+    new ExtractTextPlugin({
+      // 给输出的 CSS 文件名称加上 Hash 值
+      filename: `[name]_[contenthash:8].css`,
+    }),
+    // 4-11提取公共代码
+    new CommonsChunkPlugin({
+      // 从 common 和 base 两个现成的 Chunk 中提取公共的部分
+      chunks: ['common', 'base'],
+      // 把公共的部分放到 base 中
+      name: 'base'
+    }),
+    new DefinePlugin({
+      // 定义 NODE_ENV 环境变量为 production 去除 react 代码中的开发时才需要的部分
+      'process.env': {
+        NODE_ENV: JSON.stringify('production')
+      }
+    }),
+    // 使用 ParallelUglifyPlugin 并行压缩输出的 JS 代码
+    new ParallelUglifyPlugin({
+      // 传递给 UglifyJS 的参数
+      uglifyJS: {
+        output: {
+          // 最紧凑的输出
+          beautify: false,
+          // 删除所有的注释
+          comments: false,
+        },
+        compress: {
+          // 在UglifyJs删除没有用到的代码时不输出警告
+          warnings: false,
+          // 删除所有的 `console` 语句，可以兼容ie浏览器
+          drop_console: true,
+          // 内嵌定义了但是只用到一次的变量
+          collapse_vars: true,
+          // 提取出出现多次但是没有定义成变量去引用的静态值
+          reduce_vars: true,
+        }
+      },
+    }),
+  ]
+};
+```
