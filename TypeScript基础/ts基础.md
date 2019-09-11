@@ -1,0 +1,482 @@
+# 原始数据类型
+
+## 布尔值
+
+```js
+let isDone: boolean = false
+```
+
+## 数值
+
+```js
+let decLiteral: number = 6;
+let hexLiteral: number = 0xf00d;
+// ES6 中的二进制表示法
+let binaryLiteral: number = 0b1010;
+// ES6 中的八进制表示法
+```
+
+## 字符串
+
+```js
+let myName: string = 'Tom'
+
+let sentence: string = `hello, my name is ${myName}`
+
+```
+
+## 空值
+
+JS中没有空值（void）的概念， 在ts中，可以用`void`表示没有任何返回值的函数
+```js
+
+function alertName(): void {
+    alert('my name is Tom')
+}
+
+```
+
+声明一个`void`类型的变量没有什么用，因为只能讲它赋值为`undefined`和`null`
+```JS
+let unusable: void = undefined
+```
+
+## Null和Undefined
+
+```js
+let u: undefined = undefined
+let n: null = null
+```
+
+与void的区别是， undefined和null是所有类型的子类型。也就是说undefined类型的变量，可以赋值给number类型的变量：
+
+```js
+let num: number = undefined
+//这样不会报错
+
+let u: undefined
+let num: number = u
+//这样也不会报错
+
+let u: void
+let num: number = u
+//Type 'void' is not assignable to type 'number'.
+```
+
+# 任意值
+
+任意值（Any）用来表示允许赋值为任意类型
+
+如果是一个普通类型，在赋值过程中改变类型是不被允许的,但如果是`any`类型，则被允许赋值为任意类型：
+```js
+
+let str: string = 'sens'
+str = 5
+// Type 'number' is not assignable to type 'string'
+
+let str: any = 'sens'
+str = 5
+// ok
+
+```
+
+在任意值上访问任何属性都是允许的,也允许调用任何方法：
+
+```js
+
+let anyThing: any = 'hello';
+console.log(anyThing.myName);
+console.log(anyThing.myName.firstName);
+
+let anyThing: any = 'Tom';
+anyThing.setName('Jerry');
+anyThing.setName('Jerry').sayHello();
+anyThing.myName.setFirstName('Cat');
+
+```
+
+可以认为， **声明一个变量为任意值之后，对它的任何操作，返回的内容的类型都是任意值**
+
+## 未声明类型的变量
+
+变量如果在声明的时候，未指定其类型，那么它会被识别为任意值类型。
+
+
+# 类型推论
+
+ts会在没有明确的指定类型的时候推测出一个类型，这就是类型推论。
+
+**如果定义的时候没有赋值，不管之后有没有赋值，都会被推断成any类型而完全不被类型检查**
+
+# 联合类型
+
+联合类型表示取值可以为多种类型中的一种
+
+```js
+
+let str: string | number
+
+```
+联合类型使用`|`分隔每个类型
+
+## 访问联合类型的属性和方法
+
+当ts不确定一个联合类型的变量到底是哪个类型的时候，我们只能访问此联合类型的所有类型里共有的属性或方法：
+
+```js
+function getLength(something: string | number): number {
+    return something.length;
+}
+// index.ts(2,22): error TS2339: Property 'length' does not exist on type 'string | number'.
+//   Property 'length' does not exist on type 'number'
+```
+
+# 对象的类型 -- 接口
+
+在ts中，使用接口（interfaces）来定义对象的类型
+
+## 什么是接口
+
+在面向对象的语言中，接口是一个很重要的概念，它是对行为的抽象，而具体如何行动需要由类去实现。
+
+```js
+interface Person {
+    name: strin;
+    age: number;
+}
+
+let tom: Person = {
+    name: 'Tom',
+    age: 23
+}
+```
+
+接口一般首字母大写。
+
+定义的变量比接口少了一些属性是不被允许的，多一些属性也是不允许的。赋值的时候， **变量的形状和接口的形状必须保持一致**
+
+## 可选属性
+
+有时我们希望不要完全匹配一个形状，那么可以用可选属性：
+
+```js
+interface Person {
+    name: string;
+    age?: number;
+}
+```
+
+## 任意属性
+
+有时我们希望一个接口允许有任意的属性：
+
+```js
+interface Person {
+    name: string;
+    age?: number;
+    [propName: string]: any
+}
+// 使用[propName: string]定义了任意属性取string类型的值
+```
+
+需要注意，一旦定义了任意属性，那么确定属性和可选属性的类型都必须是它的类型的子集：
+
+```js
+interface Person {
+    name: string;
+    age?: number;
+    [propName: string]: string;
+}
+
+let tom: Person = {
+    name: 'Tom',
+    age: 25,
+    gender: 'male'
+};
+//报错，因为age是number类型不是strin的子类型
+```
+
+## 只读属性
+
+```js
+interface Person {
+    readonly: id: number;
+    name: string;
+    age: number;
+    [propName: string]: any
+}
+```
+
+注意：**只读的约束在于第一次给对象赋值的时候，而不是第一次给只读属性赋值的时候。**
+
+# 数组的类型
+
+在ts中，数组类型有多种定义方式，比较灵活。
+
+1. 
+```js
+let fib: number[] = [1,2,3]
+//数组的项中不允许出现非number类型
+```
+
+2. 数组泛型
+
+```js
+let fib: Array<number> = [1,2,3]
+```
+
+3. 用接口表示数组
+
+```js
+interface NumberArray {
+    [index: number]: number
+}
+//上面的定义表示: 只要索引的类型是数字时，那么值得类型必须是数字
+let fib: NumberArray = [1,2,3]
+```
+
+4. 类数组
+
+```js
+
+function sum() {
+    let args: number[] = arguments
+} 
+//报错，arguments是一个类数组，不能用普通的数组定义，而是使用接口：
+
+function sum() {
+    let args: {
+        [index: number]: number;
+        length: number;
+        callee: Function;
+    } = arguments;
+}
+
+```
+
+事实上，常用的类数组都有自己的接口定义， 如IArguments， NodeList， HTMLCollection等：
+
+```js
+function sum() {
+    let args: IArguments = arguments
+}
+```
+
+## any在数组中的应用
+
+```js
+let list: any[] = ['dd', 2, {ss: 'cc'}]
+```
+
+# 函数的类型
+
+```js
+//函数声明
+function sum(x: number, y: number): number {
+    return x + y
+}
+
+//函数表达式
+
+let mySum: (x: number, y: number) => number = function (x: number, y: number): number {
+    return x + y;
+};
+//注意： 不要混淆了ts中的箭头和es6中的箭头
+//在ts中箭头表示函数的定义，左边是输入类型，需要用括号括起来，右边是输出类型。
+
+```
+
+注意： 输入多余的参数是不被允许的。
+
+## 用接口定义函数的形状
+
+```js
+interface Search {
+    (source: string, sub: string): boolean
+}
+
+let mySearch: Search
+
+mySearch = function(source: string, sub: string) {
+    return boolean
+}
+```
+
+## 可选参数
+
+前面强调输入多余（少于）参数，是不允许的，但可以用`?`表示可选参数：
+
+```js
+function buildName(firstName: string, lastName?: string) {
+    if (lastName) {
+        return firstName + ' ' + lastName;
+    } else {
+        return firstName;
+    }
+}
+let tomcat = buildName('Tom', 'Cat');
+let tom = buildName('Tom');
+```
+
+注意： 可选参数必须在必需参数后面，换句话说，可选参数后面不允许再出现必须参数了。
+
+## 参数默认值
+
+ts会将添加了默认值的参数识别为可选参数。
+
+## 剩余参数
+
+es6中，可以用`...`的方式获取函数中的剩余参数：
+
+```js
+function push(array: any[], ...items: any[]){}
+```
+
+## 重载
+
+可以使用重载定义多个`reverse`的函数类型：
+
+```js
+function reverse(x: number): number;
+function reverse(x: string): string;
+function reverse(x: number | string): number | string {
+    if (typeof x === 'number') {
+        return Number(x.toString().split('').reverse().join(''));
+    } else if (typeof x === 'string') {
+        return x.split('').reverse().join('');
+    }
+}
+```
+上例中，我们重复定义了多次函数 reverse，前几次都是函数定义，最后一次是函数实现。在编辑器的代码提示中，可以正确的看到前两个提示。
+
+注意： ts会优先从最前面的函数定义开始匹配，所以多个函数定义如果有包含关系，需要优先把精确的定义写在前面。
+
+# 类型断言
+
+两种写法：
+```js
+<类型>值
+
+值 as 类型
+//react只能使用第二种
+```
+
+```js
+
+function getLength(something: string | number): number {
+    if ((something as string).length) {
+        return something as string).length;
+    } else {
+        return something.toString().length;
+    }
+}
+
+```
+
+类型断言不是类型转换，断言成一个联合类型中不存在的类型是不允许的。
+
+# 声明文件
+
+当使用第三方库时，我们需要引用它的声明文件，才能获得对应的代码不全，接口提示等功能。
+
+声明文件必须以`.d.ts`为后缀
+
+当一个第三方库没有提供声明文件时，我们就需要自己书写声明文件了。
+
+库的主要使用场景：
+1. 全局变量： 通过<script>标签引入第三方库，注入全局变量。
+2. npm包： 通过`import xx from xx`引入， 符合es6模块规范
+3. UMD库： 既可以通过<script>引入，也可以import导入。
+4. 直接扩展全局变量： 通过<script>引入，改变一个全局变量的结构
+5. 在npm包或UMD库中扩展全局变量
+6. 模块插件： 通过<script>或import导入后，改变另一个模块的结构
+
+```js
+// src/jQuery.d.ts
+
+declare const jQuery: (selector: string) => any;
+
+jQuery('#foo');
+// 使用 declare const 定义的 jQuery 类型，禁止修改这个全局变量
+jQuery = function(selector) {
+    return document.querySelector(selector);
+};
+// ERROR: Cannot assign to 'jQuery' because it is a constant or a read-only property.
+```
+
+一般来说， 全局变量都是禁止修改的常量。所以一般使用const
+
+## declare function
+
+用来定义全局函数的类型：
+
+```js
+declare function jQuery(selector: string): any
+```
+
+## declare class
+
+用来定义一个类的全局变量：
+
+```js
+declare class Animal {
+    name: string;
+    constructor(name: string);
+    sayHi(): string
+}
+```
+
+## declare enum
+
+使用`declare enum`定义的枚举类型也称作外部枚举：
+
+```js
+declare enum Directions {
+    Up,
+    Down,
+    Left,
+    Right
+}
+
+//使用
+let directions = [Directions.Up,Direction.Down, ...]
+```
+
+## declare namespace
+
+用来表示全局变量是一个对象，包含很多子属性。 如果对象有深层的层级， 则需要用嵌套的`namespace`来声明深层的属性的类型。
+
+```js
+declare namespace jQuery {
+    function ajax(url: string, settings?: any): void;
+    namespace fn {
+        function extend(object: any): void
+    }
+}
+```
+
+## interface和type
+
+除了全局变量之外， 可能有一些类型我们也希望能暴露出来，在类型声明文件中，我们可以直接使用interface或type来声明一个全局的接口或类型：
+
+```js
+interface AjaxSettings {
+    method?: 'GET' | 'POST'
+    data?: any
+}
+
+declare namespace jQuery {
+    function ajax(url: string, settings?: AjaxSettings): void
+}
+```
+
+### 防止命名冲突
+
+暴露在最外层的interface或type会作为全局类型作用于整个项目中，我们应该尽可能的减少全局变量或全局类型的数量，故最好把它们放在`namespace`下：
+
+```js
+declare namespace jQuery {
+    interface AjaxSettings{
+        
+    }
+}
