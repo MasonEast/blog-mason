@@ -477,6 +477,86 @@ declare namespace jQuery {
 ```js
 declare namespace jQuery {
     interface AjaxSettings{
-        
+
     }
 }
+```
+
+## npm包
+
+npm包的声明文件可能存在于两个地方：
+1. 与该npm包绑定在一起，判断依据是package.json中有types字典，或者有一个`index.d.ts`声明文件
+2. 发布到`@types`里，通过`npm i @types/foo -S`安装。
+
+假如以上两种方式都没有找到对应的声明文件，那么我们就需要自己为他写声明文件。
+
+npm包的声明文件主要有以下几种语法：
+
+1. export导出变量
+2. export namespace导出对象
+3. export default ES6默认导出
+4. export = commonjs  导出模块
+
+```js
+// types/foo/index.d.ts
+
+export const name: string;
+export function getName(): string;
+export class Animal {
+    constructor(name: string);
+    sayHi(): string;
+}
+export enum Directions {
+    Up,
+    Down,
+    Left,
+    Right
+}
+export interface Options {
+    data: any;
+}
+```
+
+也可以使用declare先声明多个变量，最后再用export一次性导出
+```js
+// types/foo/index.d.ts
+
+declare const name: string;
+declare function getName(): string;
+declare class Animal {
+    constructor(name: string);
+    sayHi(): string;
+}
+declare enum Directions {
+    Up,
+    Down,
+    Left,
+    Right
+}
+interface Options {
+    data: any;
+}
+
+export { name, getName, Animal, Directions, Options };
+```
+
+## 三斜线指令
+
+类似于声明文件中的import，它可以用来导入另一个声明文件。
+使用场景：
+当我们在书写一个全局变量的声明文件时
+当我们需要依赖一个全局变量的声明文件时
+
+在全局变量的声明文件中，是不允许出现import， export关键字的。一旦出现了，那么他就会被视为一个 npm 包或 UMD 库，就不再是全局变量的声明文件了。故当我们在书写一个全局变量的声明文件时，如果需要引用另一个库的类型，那么就必须用三斜线指令了。
+
+```js
+// types/jquery-plugin/index.d.ts
+
+/// <reference types="jquery" />
+
+declare function foo(options: JQuery.AjaxSettings): string;
+```
+
+
+
+
