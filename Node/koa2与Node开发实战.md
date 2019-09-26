@@ -467,4 +467,86 @@ router
 
 # HTTP
 
+HTTP/0.9： http第一个版本，只支持get请求，用于传输基础的文本内容
+
+HTTP/1.0： 增加了访问不同对象类型的功能，不仅可以传输文本，还可以传输图像，视频，二进制文件等， 同时，在GET请求命令的基础上， 增加了POST， PUT， HEAD， DELETE， LINK等命令，另外还增加了头部信息， 如User-Agent， Accept， Last-Modified, Content-Type等
+
+HTTP/1.1： 目前依旧被广泛的使用在互联网领域， 在1.0的基础上又做了大量的改进：
+    1. 默认使用持久连接的机制
+    2. 引入管道方式支持多请求发送
+    3. 请求头增加Host字段，使一台物理服务器中可以存在多个虚拟机，共享同一个IP地址
+    4. 响应头增加Transfer-Encoding字段，引入了chunked分块传输编码机制
+    5. 增加Cache-Control头域， 缓存机制更加灵活强大
+    6. 增加Content-Range头域， 实现带宽优化
+    7. 新增请求方法： OPTIONS， TRACE， CONNECT等
+    8. 新增24个HTTP状态码： 203，205，206，303，305等
+
+HTTP/2.0： 在1.1的基础上保持原有语义和功能不变，但极大的提升了性能
+
+    1. 采用二进制格式传输数据： 1.1使用的是文本格式，在2.0中，基本的协议单位是帧，每个数据流均以消息形式发送，消息由一个或多个帧组合而成。
+   
+    2. 多路复用： 在1.0中如果需要发送多个请求，则必须创建多个TCP连接， 并且浏览器对单个域名的请求有相应的数量限制，一般为6个；在1.1中，引入流水线技术，但先天的先进先出机制导致当前请求的执行依赖于上一个请求执行的完成，容易引起报头阻塞； 2.0从新定义了底层的HTTP语义映射，允许在同一个连接上使用请求和响应双向数据流。至此，同一个域名只要占用一个TCP连接，通过数据流，以帧为基本协议单位，从根本上解决了这个问题，避免了频繁创建连接产生的延迟，减少了内存消耗，提升了性能。
+
+
+    3. 流的优先级： 在2.0中，可以为每个流设置优先级，高优先级的流会被服务优先处理并返回给客户端，同时，流的优先级允许根据场景的不同进行动态改变。客户端可以在流中设置优先级帧来改变流的优先级。
+
+    4. 首部压缩
+
+    5. 服务端推送： 服务端主动推送与当前请求相关的内容，同时，服务端推送遵循同源策略，可以被浏览器缓存，实现多页面共享缓存资源。
+
+
+## URI和URL
+
+URI： 统一资源标识符，一个紧凑的字符序列，用于标识抽象或物理资源
+URL： 统一资源定位符，是URI的子集
+
+一个完整的URL一般由7个部分组成：
+    1. scheme： 使用的协议， 如FTP， HTTP等
+    2. user[:password]： 表示访问资源的用户名和密码，常见于FTP协议
+    3. host： 主机， 如IP地址或域名
+    4. port： 端口号， 如HTTP默认为80端口
+    5. path： 访问资源的路径
+    6. query： 请求数据， 以？开头
+    7. fragment： 定位锚点， 以#开头，可用于快速定位网页对应的段落
+
+## 常见的HTTP状态码
+
+1**： 消息
+2**： 成功
+3**： 重定向
+4**： 请求错误
+5** 和6**： 服务器错误
+
+## 常用的HTTP首部字段
+
+User-Agent： HTTP客户端程序的信息
+Last-Modified： 资源的最后修改的日期和时间
+Content-Length： 实体主体的大小，单位为字节
+Content-Encoding： 实体主体适用的编码方式，如gzip，compress，deflate等
+Content-Type： 实体主体的媒体类型， 如image/png， application/x-javascript， text/html等
+Expires： 实体主体过期日期和时间
+Set-Cookie： 开始状态管理所使用的Cookie信息
+Cookie： 服务器接收到的Cookie信息
+Cache-Control： 控制缓存的行为， 如public， private， no-cache等
+ETag： 资源的匹配信息
+Vary： 代理服务器缓存的管理信息
+Server： HTTP服务器的安装信息
+
+
+## Node.js的querystring模块
+
+```js
+const querystring = require('querystring')
+
+querystring.escape("id=1")      //返回id%3D1
+querystring.unescape("id%3D1")  //返回id=1
+querystring.parse("type=1&status=0")    //返回{type: '1', status: '0'}
+querystring.stringify({type: '1', status: '0'})     //返回type=1&status=0
+```
+
+### koa-router中的querystring
+
+当服务器接收到请求后，一般都需要把请求带过来的数据解析出来，koa-router封装了上下文的Request对象，在该对象中内置了query属性和querystring属性。通过它们可以直接获取GET请求的数据，唯一不同的是query返回的是对象，querystring返回的是查询字符串。
+
+
 
