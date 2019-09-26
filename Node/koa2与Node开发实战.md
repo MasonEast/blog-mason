@@ -548,5 +548,300 @@ querystring.stringify({type: '1', status: '0'})     //返回type=1&status=0
 
 当服务器接收到请求后，一般都需要把请求带过来的数据解析出来，koa-router封装了上下文的Request对象，在该对象中内置了query属性和querystring属性。通过它们可以直接获取GET请求的数据，唯一不同的是query返回的是对象，querystring返回的是查询字符串。
 
+# 构建Koa Web应用
 
+## MVC
+
+MVC全称是Model View Controller，即模型，视图，控制器。MVC是一种软件设计典范，用逻辑，数据，视图分离的方式组织代码，在对界面及用户交互进行修改的同时，业务逻辑部分的代码可以保持不变。
+
+## 模板引擎
+
+开发Web应用时， 必然会涉及两个方向： 一个是前端界面，另一个是后端服务。在大部分项目中，需要后端服务提供数据信息给前端界面进行展示。常规的操作是前端发起HTTP请求，以Ajax的方式调用后端提供的服务接口，后端接口接收到请求后，进行相应的逻辑处理，并返回对应的数据给前端，然后由前端进行动态的HTML片段替换。这样有一定的弊端： 
+    1. 不利于SEO
+    2. 不利于SSR
+
+### 什么是模板引擎
+
+模板引擎是Web应用中用来生成动态的HTML的工具，负责将数据模型和HTML模板结合，生成最终的HTML
+
+### 常见的模板引擎
+
+常见的有EJS， Jade（现在叫Pug）， Handlebars， Nunjucks， Swig等。
+
+用不同的模板引擎实现下面代码：
+
+```js
+<div class="entry"> 
+    <h1>Template Engine</h1>
+    <div class="body">
+        <p>This is the best template engine</p>
+    </div>
+</div>
+```
+
+1. Ejs
+
+```js
+<div class="entry">
+    <% if(title){ %>
+        <h1><%=title%></h1>
+    <% } %>
+    <div class="body">
+        <p><% =body %></p>
+    </div>
+</div>
+```
+
+2. Jade
+
+```js
+div.entry
+    if title
+        h1= title
+    div.body
+        p= body
+```
+
+3. Nunjucks
+
+```js
+<div class="entry">
+    {% if(title){ %}
+            <h1>{{title}}</h1>
+    {% } %}
+    <div class="body">
+        <p>{{ body }}</p>
+    </div>
+</div>
+```
+
+## 静态资源
+
+若客户端请求的是静态资源，如js脚本，图片， css样式表等，服务器会直接把静态资源的内容响应给客户端； 若客户端请求的是动态资源， 如个人中心页面，服务器会先从数据库或第三方接口中获取对应的Model数据，然后把View模板文件与Model数据相结合，转化为静态资源，最后把静态资源响应给客户端。
+
+### 静态资源的类型
+
+浏览器通过MIME Type来确定资源的媒体类型
+
+MIME Type通常是通过HTTP，由Web服务器告知浏览器的，被定义在Content-Type header中。
+
+### koa-static简介
+
+koa-static中间件的API接收两个参数--root和opts
+
+```js
+const Koa = require('koa')
+const app = new Koa()
+app.use(require('koa-static')(root, opts))
+```
+
+root为字符串类型，用来指定静态资源的相对目录路径，opts为对象类型，可以通过opts对静态资源进行详细配置。koa-staic常用配置：
+
+1. maxage： 浏览器默认的最大缓存时长max-age
+2. hidden： 是否允许传输隐藏的文件，默认false
+3. index： 默认的文件名，默认为index.html
+4. defer： 是否推迟响应， 如果为true，koa-static中间件将会在其他中间件执行完成后再执行
+5. gzip： 默认为true，即支持gzip压缩
+6. setHeaders： 设置请求头函数
+7. extensions： 当资源匹配不到时，根据传入的数组参数依次进行匹配，返回匹配到的第一个资源。
+
+### 使用koa-multer中间件实现文件上传
+
+主要用于上传文件，处理multipart/form-data类型的表单数据
+
+注： Multer不会处理任何非mutipart/form-data类型的表单数据
+
+```js
+const Koa = require('koa')
+const multer = require('koa-multer')
+const app = new Koa()
+app.use(multer({ dest: './uploads/' }))
+app.listen(3000)
+```
+
+multer接收一个options对象，其中最基本的是dest属性，用来设置上传文件的存储地址。如果省略options对象， 上传文件将被保存到内存中，不会写入磁盘。为了避免命名冲突，multer会修改上传文件的文件名。
+
+options对象属性：
+
+dest
+fileFilter： 文件过滤器
+limits： 限制上传的数据
+preservePath： 保存包含文件名的完整文件路径
+
+```js
+const Koa = require('koa')
+
+const Router = require('koa-router')
+const multer = require('koa-multer')
+
+const app = new Koa()
+const router = new Router()
+
+const upload = multer({
+    dest: 'uploads/'
+})
+
+const types = upload.single('avatar')
+router.get('/upload', async (ctx, next) => {
+    ctx.response.body = ...
+})
+
+router.post('/profile', types)  //文件上传请求路由
+
+app.use(router.routes())
+app.listen(3000)
+```
+
+# 数据库
+
+数据库主要具备以下特点：
+    1. 数据共享，数据库中的数据可以同时被多人查询和写入
+    2. 减少数据冗余度，与文件系统相比，数据库共享了数据，从而避免了文件的复制，降低了数据冗余度
+    3. 数据独立： 数据库中的数据和业务是对立的
+    4. 数据一致性和可维护性： 数据库中的数据应当保持一致，以防止数据丢失和越权使用。在同一周期内，既能允许对数据实现多路存取，也能防止用户之间的数据操作相互影响。
+    5. 故障恢复： 可以及时发现故障和修复，从而防止数据被损坏
+
+数据库一般采用索引来提升查询效率
+
+为了实现数据的一致性，数据库操作是基于事务的。
+
+数据库按照存储的数据模型，分为关系型数据库和非关系型数据库：
+    1. 关系型数据库： 把复杂的数据结构归结为简单的二维表格形式，表格之间的数据关系通过主外键来维系。
+    2. 非关系型数据库： 直接处理对象的数据库
+
+## 常见的数据库
+
+### 关系型数据库
+
+1. Oracle
+2. MySQL
+3. MariaDB
+
+### 非关系型数据库
+
+1. MongoDB： 一种文档导向的数据库，可以直接存储对象
+2. Memcached： 一套分布式高速缓存系统，基于键值存储，通常应用于高速缓存
+3. Redis： 一套基于内存的可持久化的键值对存储数据库
+
+在开发时，结构简单的应用一般会采用MongoDB这样的数据库来存储，为了提升系统性能，一般也会采用Redis这样的内存数据库作为高速缓存。
+
+## 在Koa中应用MySQL数据库
+
+## 在Koa中应用MongoDB数据库
+
+
+在操作数据库前，需要建立数据库连接：
+
+```js
+const mongoose = require('mongoose')
+mongoose.connect( 'mongodb://localhost/test',{
+    user: 'username',
+    pass: 'password',
+    poolSize: 10
+})
+
+const db = mongoose.connection
+db.on('error', err => {
+    console.error(err)
+})
+db.on('open', () => {
+    console.log('we are connected')
+})
+```
+
+在Mongoose中，一切都基于Schema，Mongoose定义了数据模型的结构：
+
+```js
+const categorySchema = new mongoose.Schema({
+    name: String,
+    description: String,
+    createdAt: {
+        type: Date,
+        default: Date.now
+    }
+})
+```
+
+在定义类型时，也可以定义一些约束：
+
+required： 是否必填
+default： 默认值
+select： 定义在查询时，是否默认输出该字段
+get： 定义Getter，可以通过它定义计算字段
+set： 定义Setter，在写入数据时，可以对写入的数据进行预处理
+alias： 别名
+
+为了提高查询效率，一般会对查询的字段配置索引来优化查询，通过index属性来开启
+
+```js
+const categorySchema = new mongoose.Schema({
+    name: {
+        type: String,
+        index: true,
+        unique: true
+    }
+    ...
+})
+//和关系型数据库中的索引一样，在写入数据时，需要维护索引信息，这会降低数据写入的效率，不要滥用索引
+```
+
+定义了Schema之后，可以通过model方法得到模型
+`const Category = mongoose.model('Category', categorySchema)`
+
+在得到的模型上，可以直接调用其原型上的方法对模型进行数据操作，新增数据的代码：
+
+```js
+const category = new Category({     //直接实例化一个新的对象来新增数据
+    name: 'test', 
+    description: 'test category'
+})
+
+category.save(error => {
+    if(error){
+        console.error(error)
+        return
+    }
+    console.log('saved')
+})
+
+Category.create({       //也可以直接通过模型的create方法新增数据
+    name: 'test',
+    description: 'test category'
+}, (error, category) => {
+    if(error){
+        console.error(error)
+    }else{
+        console.log(category)
+    }
+})
+
+Category.find({
+    name: 'test'    //通过find直接查询name=‘test’的结果
+    name: /^t/      //可以使用正则，对字符串类型支持模糊查询
+}, (error, res) => {
+    if(error){
+        ...
+    }else{
+        ...
+    }
+})
+
+Category.where('createdAt') //通过where方法对指定字段查询
+    .lt(new Date())         //通过lt对where指定的字段继续限定查询条件
+    .select('name, description')    //指定查询结果输出的字段
+    .sort({createdAt: 1})   //指定排序规则
+    .limit(10)              //限定查询10条数据
+    .exec((err, res) => {}) //执行查询
+
+Category.remove({       //删除操作
+    name: 'test'
+}).then(res => {})
+
+Category.update({       //更新操作
+    name: 'test'
+}, {
+    name: 'tesst1',
+    description: 'test1'
+}).then(res => {})
+```
 
