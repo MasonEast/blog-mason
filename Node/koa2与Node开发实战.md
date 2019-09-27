@@ -845,3 +845,160 @@ Category.update({       //更新操作
 }).then(res => {})
 ```
 
+在进行数据操作之前需要打开数据库连接，由于是在HTTP接口中调用数据操作，所以为了避免频繁打开和关闭数据库连接，这里定义了中间件，在请求的开始和结束时分别调用建立连接和关闭连接的方法：
+
+```js
+app.use( async (ctx, next) => {
+    await connect()     //处理请求前建立连接
+    await next()        //处理请求
+    await close()       //处理请求后关闭连接
+})
+```
+
+## 在Koa中应用Redis数据库
+
+Redis可用作数据库， 高速缓存和消息队列代理， Redis非常适合处理那些短时间内被高频访问但又不需要长期访问的简单数据存储，如用户的登录信息或游戏中的数据。
+
+
+# 优化与部署
+
+## 服务优化
+
+在实际开发中，开发仅是整个开发流程的一小部分，当编写的程序运行在线上服务器时，可能会出现多种意想不到的问题。
+
+### 使用log4js记录日志
+
+在排查分析线上问题时，日志起着关键作用。
+
+```js
+const log4js = require('log4js')
+const logger = log4js.getLogger()       //获取日志记录器，默认输出到console中
+logger.level = 'debug'                  //设置日志输出级别
+logger.debug('Some debug messages')     //记录debug级别的日志
+
+const log4js = require('log4js')
+log4js.configure({
+    appenders: {
+        cheese: {
+            type: 'file',
+            filename: 'cheese.log'
+        }
+    },
+    categories: {
+        default: {
+            appenders: ['cheese'],
+            level: 'error'  
+        }
+    }
+})
+
+const logger = log4js.getLogger('cheese')
+logger.trace('Entering cheese testing')
+logger.debug('Got cheese')
+logger.info('Cheese is Gouda')
+```
+
+基础知识：
+1. 日志分类： 一般可以分为访问日志和应用日志，访问日志一般记录客户端对应用的访问信息，例如，在HTTP服务中主要记录HTTP请求头中的重要数据。应用日志是开发者在应用中根据业务需要输出的调用跟踪， 警告和异常等信息， 方便开发人员查看项目的运行状态和分析， 排查Bug。应用日志包括debug， warn和error等不同级别。
+
+    日志等级：
+        1. trace： 记录应用调用的跟踪信息，级别最低
+        2. debug： 记录调试信息，方便调试时使用
+        3. info： 记录非调试和跟踪的信息，相对来说较重要的信息
+        4. warn： 记录警告信息
+        5. error： 记录错误信息， 这些错误不会导致整个服务完全不可用
+        6. fatal： 记录严重错误信息，这些错误导致整个服务不可用
+
+
+2. 日志切割： 记录的日志都会存储在 cheese.log文件中。随着应用的运行，这个文件 会越来越大。日益增大的文件给查看和跟踪问题带来了诸多不便 ， 同时，某些文件系统还 对单个文件存在大小限制。为了控制单个日志文件的体积， log4js 提供了 一些方法对日志进行 分割。本节将按照日期对日志文件进行分割。例如 ， 第 l 天将日志存储在 task-2018-04-0l.log 文件中，第 2 天将会存储在 task-2018-04-02.log 文件中。这样不仅方便开发人员按照日期排 查问题，还方便对日志文件进行迁移。
+
+### 自定义错误页
+
+Koa可以通过中间件来实现这一功能， 该中间件需要具备以下功能：
+
+    1. 在页面响应400， 500等异常状态码时，引导用户跳转至错误提示页面
+    2. 提供默认错误提示页面
+    3. 允许用户自定义错误提示页面
+
+1. 捕捉异常
+
+```js
+module.exports = () => {
+    return async (ctx, next) => {
+        try {
+            await next()
+            if(ctx.response.status === 404 && !ctx.response.body) ctx.throw(404)
+        }catch (e) {
+            //此处进行异常处理
+        }
+    }
+}
+```
+
+注意： 要将该中间件放在“洋葱模型”的最外层。
+
+```js
+const miHttpError = require('./xxx')
+module.exports = app => {
+    app.use(miHttpError())
+    //后面是其他中间件的注册代码
+}
+```
+
+2. 异常处理逻辑
+
+异常处理逻辑主要是针对HTTP错误码进行判断，并根据不同的错误情况渲染不同的文件：
+
+```js
+let fileName = 'other'
+let status = parseInt(e.status)
+
+const message = e.message
+
+if(status >= 400){
+    switch (status) {
+        case 400:
+        case 404:
+        case 500:
+            fileName = status
+            break
+        default:            //其他错误指定渲染other文件
+            fileName = 'other'
+    }
+}
+```
+
+3. 渲染错误页面
+
+采用了Nunjucks模板
+
+```js
+<head>
+    <title>Error - {{status}}</title>
+</head>
+<body>
+    <div id="error">
+        <h1>Error - {{status}}</h1>
+        <p>Looks like something broke!</p>
+        {% if(env === 'development') %}
+        <h2>Message:</h2>
+        <pre>
+            <code>
+                {{error}}
+            </code>
+        </pre>
+        <h2>Stack: </h2>
+        <pre>
+            <code>
+                {{stack}}
+            </code>
+        </pre>
+        {% endif %}
+    </div>
+</body>
+```
+
+为了便于维护，一般会将错误页面保存在同一个目录下，并在应用项目中维护这些错误页面，而错误页面的中间件一般单独发布到NPM上，以便在多个项目中复用。
+
+有一个类似的中间件koa-error
+

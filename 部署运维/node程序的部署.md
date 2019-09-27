@@ -205,3 +205,66 @@ http.Server((req, res) => {
 
 开源的Nginx是专门提供静态文件服务的，跟Node搭配起来也很容易配置。跟 Node 搭配起来也很容易配置。一般在 Nginx/ Node 的搭配中，**所有请求最初都是到 Nginx**那里，然后再由它将非静态文件的请求发给 Node。
 
+
+
+# 部署
+
+## Node.js进程管理器PM2
+
+进程管理器用于对应用状态进行管理，可以启动，暂停，重启或删除应用进程，也可以对进程进行监控。
+
+一般情况下应用都需要一个进程管理器来守护运行的进程。Node.js进程会因为各种意外崩溃，而守护进程会立即重启该进程，保证服务的可用性。
+
+全局安装PM2： `npm i pm2@lastst -g`
+
+通过start命令可以启动守护和监控应用： `pm2 start app.js`
+
+
+在一些复杂的环境配置需求中，可以使用独立的YAML或JSON格式的配置文件:
+
+```js
+{
+    "apps": [{
+        "script": "./app.js",               //需要执行的脚本
+        "instances": -1,                    //启动的实例数量
+        "exec_mode": "cluster",             //执行模式为cluster
+        "watch": true,                      //热重启
+            "env": {                        //环境变量
+                "NODE_ENV": "prod"
+            }
+    }]
+}
+```
+
+Node.js是一个单进程异步模型，不能很好的利用CPU资源，cluster模式可以让Node.js开发的Web服务动态分配请求给多个CPU内核，从而提升服务性能，这里配置为-1， 意味着会启动CPU的所有核数量减1的cluster。
+    注意： 在cluster模式下，由于多个进程运行相同的代码，可能会存在多个进程同时操作同一文件和数据库的情况，进而引起**文件锁**或**数据库锁**
+
+
+## 应用容器引擎Docker
+
+Docker是一个更适合“云”时代的开发部署方式。传统的部署中都需要对宿主机进行大量的环境配置，有时候需要开发人员和运维人员配合才能完成部署；而在Docker部署中，开发人员可以直接打包一个Docker环境的镜像，所有的配置都在镜像中完成； 运维人员只需将镜像加载到Docker中即可、 通过容器， 还可以隔离不同容器中的应用环境， 从而能在宿主机中运行大量应用，而这些应用不会相互影响。
+
+
+## 服务监控
+
+### Node.js服务性能指标及采集
+
+服务的性能一般分为两部分： **服务的吞吐量和服务对资源的占用量**
+
+服务器的资源主要包括CPU， 内存， 磁盘， 网络等。其中CPU和内存的信息可以直接通过process对象来获取：
+
+```js
+let previousCpuUsage = process.cpuUsage()
+let previousHrTime = process.hrtime()
+setInterval(() => {
+    const const currentCpuUsage = process.cpuUsage(previousCpuUsage)
+    const currentHrTime = process.hrtime(previousHrTime)
+    const duration = currentHrTime[0]* 1e6 + currentHrTime[1]
+    previousTime = currentHrTime
+    previousCpuUsage = currentCpuUsage
+    const cpuPercent = {
+        user: currentCpuUsage.user / duration       //CPU用户资源占比
+        system: currentCpuUsage.system / duration   //CPU系统资源占比
+    }
+    console.log(cpuPercent)
+}, 1000)
