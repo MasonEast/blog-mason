@@ -97,18 +97,45 @@ http {
 }
 ```
 
+root 、alias指令区别
+
+```js
+location /img/ {
+    alias /var/www/image/;
+}
+#若按照上述配置的话，则访问/img/目录里面的文件时，ningx会自动去/var/www/image/目录找文件
+location /img/ {
+    root /var/www/image;
+}
+#若按照这种配置的话，则访问/img/目录下的文件时，nginx会去/var/www/image/img/目录下找文件。] 
+```
+
+alias是一个目录别名的定义，root则是最上层目录的定义。
+
+还有一个重要的区别是alias后面必须要用“/”结束，否则会找不到文件的。。。而root则可有可无~~
+
 上面是nginx的基本配置，需要注意的有以下几点：
 
 1、几个常见配置项：
 
-1.$remote_addr 与 $http_x_forwarded_for 用以记录客户端的ip地址；
-2.$remote_user ：用来记录客户端用户名称；
-3.$time_local ： 用来记录访问时间与时区；
-4.$request ： 用来记录请求的url与http协议；
-5.$status ： 用来记录请求状态；成功是200；
-6.$body_bytes_s ent ：记录发送给客户端文件主体内容大小；
-7.$http_referer ：用来记录从那个页面链接访问过来的；
-8.$http_user_agent ：记录客户端浏览器的相关信息；
+    1.$remote_addr 与 $http_x_forwarded_for 用以记录客户端的ip地址；
+    2.$remote_user ：用来记录客户端用户名称；
+    3.$time_local ： 用来记录访问时间与时区；
+    4.$request ： 用来记录请求的url与http协议；
+    5.$status ： 用来记录请求状态；成功是200；
+    6.$body_bytes_s ent ：记录发送给客户端文件主体内容大小；
+    7.$http_referer ：用来记录从那个页面链接访问过来的；
+    8.$http_user_agent ：记录客户端浏览器的相关信息；
+
 2、惊群现象：一个网路连接到来，多个睡眠的进程被同事叫醒，但只有一个进程能获得链接，这样会影响系统性能。
 
 3、每个指令必须有分号结束。
+
+
+## Nginx正向代理和反向代理
+
+实践中客户端无法直接与服务端发起请求时，我们就需要代理服务。
+
+正向代理和反向代理的区别在于代理的对象不一样，正向代理的代理对象是客户端，反向代理的代理对象是服务端。
+
+Nginx通过proxy_pass可以设置代理服务。
