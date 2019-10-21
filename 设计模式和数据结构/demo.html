@@ -9,66 +9,41 @@
 </head>
 
 <body>
+    <div style="height: 2000px"></div>
     <script>
+        function debounce(fn, delay) {
+            delay = delay || 200;
 
-        //错误提示
-        let errorMsgs = {
-            default: '输入格式不正确',
-            minLength: '输入数据长度不足',
-            isNumber: '请输入数字',
-            required: '内容不为空'
-        }
+            var timer = null;
 
-        //规则
-        let rules = {
-            minLength: (value, len) => {
-                if (value.length < len) {
-                    return errorMsgs['minLength']
-                }
-                return 'ok'
-            },
-            isNumber: (value) => {
-                if (!/\d+/.test(value)) {
-                    return errorMsgs['isNumber']
-                }
-                return 'ok'
-            },
-            required: (value) => {
-                if (!value) {
-                    return errorMsgs['required']
-                }
-                return 'ok'
+            return function () {
+                var arg = arguments;
+
+                // 每次操作时，清除上次的定时器
+                clearTimeout(timer);
+                timer = null;
+
+                // 定义新的定时器，一段时间后进行操作
+                timer = setTimeout(() => {
+                    console.log(this)
+                    fn.apply(this, arg);
+                }, delay);
             }
+        };
+
+        var count = 0;
+
+        // 主体
+        function scrollHandle(e) {
+            console.log(e.type, ++count); // scroll
         }
 
-        //校验器
-        function Validator() {
-            this.items = []
-            this.vaRules = []
-        }
+        // 代理
+        var proxyScrollHandle = (function () {
+            return debounce(scrollHandle, 500);
+        })();
 
-        Validator.prototype = {
-            constructor: Validator,
-
-            add: function (rule) {
-                this.vaRules.push(rules[rule])
-            },
-
-            start: function (value) {
-                let arr = this.vaRules.map(r => {
-                    console.log(r(value))
-                    return r(value)
-                })
-                return arr
-            }
-        }
-
-        let dd = new Validator()
-        // console.log(dd)
-        console.log(dd.add('isNumber'))
-        console.log(dd.add('required'))
-        console.log(dd.start('sss'))
-
+        window.onscroll = proxyScrollHandle;
     </script>
 </body>
 
