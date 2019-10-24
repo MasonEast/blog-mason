@@ -11,36 +11,110 @@
 <body>
     <div style="height: 2000px"></div>
     <script>
-        // 装饰器，在当前函数执行前先执行另一个函数
-        function decoratorBefore(fn, beforeFn) {
-            return function () {
-                var ret = beforeFn.apply(this, arguments);
-                console.log(ret)
-                // 在前一个函数中判断，不需要执行当前函数
-                if (ret !== false) {
-                    console.log(111)
-                    fn.apply(this, arguments);
+
+        // 观察者
+        var observer = {
+            // 订阅集合
+            subscribes: [],
+
+            // 订阅
+            subscribe: function (type, fn) {
+                if (!this.subscribes[type]) {
+                    this.subscribes[type] = [];
                 }
-            };
+
+                // 收集订阅者的处理
+                typeof fn === 'function' && this.subscribes[type].push(fn);
+            },
+
+            // 发布  可能会携带一些信息发布出去
+            publish: function () {
+                var type = [].shift.call(arguments),
+                    fns = this.subscribes[type];
+
+                // 不存在的订阅类型，以及订阅时未传入处理回调的
+                if (!fns || !fns.length) {
+                    return;
+                }
+
+                // 挨个处理调用
+                for (var i = 0; i < fns.length; ++i) {
+                    fns[i].apply(this, arguments);
+                }
+            },
+
+            // 删除订阅
+            remove: function (type, fn) {
+                // 删除全部
+                if (typeof type === 'undefined') {
+                    this.subscribes = [];
+                    return;
+                }
+
+                var fns = this.subscribes[type];
+
+                // 不存在的订阅类型，以及订阅时未传入处理回调的
+                if (!fns || !fns.length) {
+                    return;
+                }
+
+                if (typeof fn === 'undefined') {
+                    fns.length = 0;
+                    return;
+                }
+
+                // 挨个处理删除
+                for (var i = 0; i < fns.length; ++i) {
+                    if (fns[i] === fn) {
+                        fns.splice(i, 1);
+                    }
+                }
+            }
+        };
+
+
+        function jobListForA(jobs) {
+            console.log('A', jobs);
         }
 
-
-        function skill() {
-            console.log('数学');
+        function jobListForB(jobs) {
+            console.log('B', jobs);
         }
 
-        function skillMusic() {
-            console.log('音乐');
-        }
+        // 订阅岗位列表
+        observer.subscribe('job', jobListForA);
+        observer.subscribe('job', jobListForB);
 
-        function skillRun() {
-            console.log('跑步');
-        }
 
-        var skillDecorator = decoratorBefore(skill, skillMusic);
-        skillDecorator = decoratorBefore(skillDecorator, skillRun);
+        // A订阅了笔试成绩
+        observer.subscribe('examinationA', function (score) {
+            console.log(score);
+        });
 
-        skillDecorator(); // 跑步 音乐 数学
+        // B订阅了笔试成绩
+        observer.subscribe('examinationB', function (score) {
+            console.log(score);
+        });
+
+        // A订阅了面试结果
+        observer.subscribe('interviewA', function (result) {
+            console.log(result);
+        });
+
+        observer.publish('examinationA', 100); // 100
+        observer.publish('examinationB', 80); // 80
+        observer.publish('interviewA', '备用'); // 备用
+
+        observer.publish('job', ['前端', '后端', '测试']); // 输出A和B的岗位
+
+
+        // B取消订阅了笔试成绩
+        observer.remove('examinationB');
+        // A都取消订阅了岗位
+        observer.remove('job', jobListForA);
+
+        observer.publish('examinationB', 80); // 没有可匹配的订阅，无输出
+        observer.publish('job', ['前端', '后端', '测试']); // 输出B的岗位
     </script>
 </body>
 
