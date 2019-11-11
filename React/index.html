@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <!--
+  <script src="https://cdn.bootcss.com/react/16.9.0/umd/react.development.js"></script>
+  <script src="https://cdn.bootcss.com/react-dom/16.9.0/umd/react-dom.development.js"  ></script>
+-->
+    <script src="./React.js"></script>
+
+    <script type='text/javascript' src="./babel.js"></script>
+
+</head>
+
+<body>
+    <div id='root' class="root">
+
+    </div>
+    <script type='text/babel'>
+
+var { lazy, Suspense } = React;
+var OtherComponent = lazy(() => {
+    return new Promise(resolve =>
+        setTimeout(
+            () =>
+                resolve({
+                    default: function render(props) {
+                        //export default
+                        return <div>Hello,{props.name}</div>;
+                    }
+                }),
+            3000
+        )
+    );
+});
+var valueRef = React.createRef()
+class App extends React.Component {
+    constructor(props){
+        super(props)
+        this.state = {
+            name: "ruby"
+        }
+    }
+    updateName(){
+       var  name = valueRef.current.value;
+       this.setState({name})
+    }
+    render() {
+        return (
+            <div>
+                <p><input ref={valueRef} onChange={this.updateName.bind(this)}  value={this.state.name} />{new Date-0}</p>
+             
+                <Suspense  fallback={<div>loading...</div>}>
+                    <OtherComponent name={this.state.name} />
+                </Suspense>
+            </div>
+        );
+    }
+}
+// debugger
+ReactDOM.render(<App />, document.getElementById("root"));
+
+ 
+ </script>
+
+
+</html>
