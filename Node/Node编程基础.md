@@ -258,3 +258,4 @@ fs.readdir(filesDir, (err, files) => {
 }
   tasks.forEach(task => task());  //开始并行执行任务
 });
+```
