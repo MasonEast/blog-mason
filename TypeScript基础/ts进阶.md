@@ -249,35 +249,4 @@ interface Point3d extends Point {
 let point3d: Point3d = {x: 1, y: 2, z: 3};
 ```
 
-# 泛型
-
-泛型是指在定义函数， 接口或类的时候，不预先指定具体的类型，而在使用的时候再指定类型的一种特性。
-
-```js
-function createArray(length: number, value: any): Array<any> {    //数组泛型
-    let result = [];
-    for (let i = 0; i < length; i++) {
-        result[i] = value;
-    }
-    return result;
-}
-
-createArray(3, 'x'); // ['x', 'x', 'x']
-```
-
-上面代码的缺陷就是它没有准确的定义返回值得类型。
-
-```js
-function createArray<T>(length: number, value: T): Array<T> {
-    let result: T[] = [];
-    for (let i = 0; i < length; i++) {
-        result[i] = value;
-    }
-    return result;
-}
-
-createArray<string>(3, 'x'); // ['x', 'x', 'x']
-```
-我们在函数名后添加了 <T>，其中 T 用来指代任意输入的类型，在后面的输入 value: T 和输出 Array<T> 中即可使用了。
-
 

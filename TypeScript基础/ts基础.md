@@ -101,6 +101,25 @@ anyThing.myName.setFirstName('Cat');
 
 变量如果在声明的时候，未指定其类型，那么它会被识别为任意值类型。
 
+# unknown
+
+unknown 和 any 的主要区别是 unknown 类型会更加严格:在对unknown类型的值执行大多数操作之前,我们必须进行某种形式的检查,而在对 any 类型的值执行操作之前,我们不必进行任何检查。
+
+# never
+
+never 类型表示的是那些永不存在的值的类型，never 类型是任何类型的子类型，也可以赋值给任何类型；然而，没有类型是 never 的子类型或可以赋值给 never 类型（除了never本身之外）。
+
+## 常见场景
+
+```js
+// 抛出异常的函数永远不会有返回值
+function error(message: string): never {
+    throw new Error(message);
+}
+
+// 空数组，而且永远是空的
+const empty: never[] = []
+```
 
 # 类型推论
 
@@ -207,6 +226,23 @@ interface Person {
 }
 ```
 
+## 继承接口
+
+```js
+interface VIPUser extends User {
+    broadcast: () => void
+}
+
+//还可以继承多个接口
+
+interface VIPUser extends User, SupperUser {
+    broadcast: () => void
+}
+```
+
+
+
+
 注意：**只读的约束在于第一次给对象赋值的时候，而不是第一次给只读属性赋值的时候。**
 
 # 数组的类型
@@ -267,6 +303,128 @@ function sum() {
 ```js
 let list: any[] = ['dd', 2, {ss: 'cc'}]
 ```
+
+# 元组（Tuple）
+
+元组类型和数组类型非常相似， 表示一个已知元素数量和类型的数组， 各元素的类型不必相同。
+
+```ts
+let x: [string, number]
+x = ['hello', 10, false]           //error
+x = ['hello']                      //error
+x = [10, 'helllo']                 //error
+```
+元组中包含的元素，必须与声明的类型一致，而且不能多、不能少，甚至顺序不能不符。
+
+元组继承于数组，但是比数组拥有更严格的类型检查。
+
+# Object
+
+object表示非原始类型， 也就是除 number， string， boolean， symbol， null或undefined之外的类型。
+
+对象， 枚举， 数组， 元组统统都是`object`类型
+
+# 枚举类型
+
+当我们声明一个枚举类型时，虽然没有给他们赋值， 但是它们的值其实是默认的数字类型， 而且默认从0开始依次累加：
+
+```ts
+enum Direction {
+    Up,
+    Down, 
+    Left, 
+    Right
+}
+
+console.log(Direction.Up === 0); // true
+console.log(Direction.Down === 1); // true
+console.log(Direction.Left === 2); // true
+console.log(Direction.Right === 3); // true
+
+//如果给` Up=10 ` 则是10， 11， 12 ，13
+```
+
+也可以是字符串类型：
+
+```ts
+enum Direction {
+    Up = 'Up',
+    Down = 'Down',
+    Left = 'Left',
+    Right = 'Right'
+}
+
+console.log(Direction['Right'], Direction.Up); // Right Up
+```
+
+## 枚举的本质
+
+我们印象中一个 JavaScript 对象一般都是正向映射的，即 `name => value`，为什么在枚举中是可以正反向同时映射的？即 `name <=> value`。
+
+来看下上面的例子被编译为js后的样子：
+
+```js
+var Direction;
+(function (Direction) {
+    Direction[Direction["Up"] = 10] = "Up";
+    Direction[Direction["Down"] = 11] = "Down";
+    Direction[Direction["Left"] = 12] = "Left";
+    Direction[Direction["Right"] = 13] = "Right";
+})(Direction || (Direction = {}));
+```
+
+##  常量枚举
+
+```js
+const enum Direction {
+    Up = 'Up',
+    Down = 'Down',
+    Left = 'Left',
+    Right = 'Right'
+}
+
+const a = Direction.Up;
+
+//编译后：
+
+var a = 'Up'
+```
+这就是常量枚举的作用,因为下面的变量 a 已经使用过了枚举类型,之后就没有用了,也没有必要存在与 JavaScript 中了, TypeScript 在这一步就把 Direction 去掉了,我们直接使用 Direction 的值即可,这是**性能提升**的一个方案。
+
+## 为枚举添加静态方法
+
+```ts
+enum Month {
+    January,
+    February,
+    March,
+    April,
+    May,
+    June,
+    July,
+    August,
+    September,
+    October,
+    November,
+    December,
+}
+
+namespace Month {
+    export function isSummer(month: Month) {
+        switch (month) {
+            case Month.June:
+            case Month.July:
+            case Month.August:
+                return true;
+            default:
+                return false
+        }
+    }
+}
+
+console.log(Month.isSummer(Month.January)) // false
+```
+
 
 # 函数的类型
 
