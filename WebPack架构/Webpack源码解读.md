@@ -6,9 +6,22 @@ Webpack 源码是一个插件的架构，他的很多功能都是通过诸多的
 从配置文件读取 entry 开始，到最后输出 bundle.js 的过程，就是主线
 
 应该关心如下几点：
+
 webpack 的编译过程主要有哪些阶段？（生命周期）
+
+before-run
+run
+before-compile
+compile
+this-compilation
+compilation 这里进行一些代码编译的准备工作
+make 这里进行代码编译
+after-compile 这里会根据编译结果 合并出我们最终生成的文件名和文件内容。
+
 webpack 是如何 从 entry 开始解析出整个依赖树的？
+
 loaders 是在何时被调用的？
+
 最终是如何知道要生成几个文件，以及每个文件的内容的？ 而其他一些不重要的问题我们尽量忽略，比如如何解析配置，如何处理错误，HASH 规则等。
 
 编译源码分为以下几步：
