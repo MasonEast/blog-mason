@@ -18,6 +18,18 @@ undefined === null 比较结果为false
 
 js中对象类型是引用传递， 基础数据类型是值传递， 可以通过将基础类型包装后进行引用传递。
 
+# void和undefined的区别
+
+void是js中的一个运算符， 在js中判断是否是undefined， 一般这样写：
+
+```js
+function isUndefined(input) {
+  return input === void 0;
+}
+```
+
+undefined是术语， 类型， 值， 属性， 而且可以被重写！
+
 # 编写一个json对象的拷贝函数
 
 根据深拷贝的启发， 不拷贝引用对象， 拷贝一个字符串会开辟一个新的存储地址， 这样就切断了引用对象的指针联系
@@ -324,3 +336,213 @@ ajax("http://m.baidu.com/", "post", null, {"test": 1}).catch((error) => {
 });
 ```
 
+# 请用js实现一个函数parseUrl(url),将一段url字符串解析为Object.
+
+parseUrl("http://www.baidu.com/product/list?id=111&sort=discount#title");
+
+==>
+
+```js
+{
+    protocol: "http",
+    host: "www.baidu.com",
+    path: "/product/list",
+    params: {
+        id: "111",
+        sort: "discount"
+    },
+    hash: "title"
+}
+```
+
+实现：
+
+```js
+function parseUrl(url) {
+    let a = document.createElement("a");
+    a.href = url;
+    return {
+        source: url,
+        protocol: a.protocol.replace(':', ''),
+        host: a.hostname,
+        port: a.port,
+        query: a.search,
+        params: (() => {
+            let ret = {};
+            let querys = [];
+            let searchQuery = a.search.replace(/^\?/,'').split('&');
+            for (var i = 0; i < searchQuery.length; i++) {
+                if (searchQuery[i]) {
+                    querys = searchQuery[i].split('=');
+                    ret[querys[0]] = querys[1];
+                }
+            }
+            return ret;
+        })(),
+        file: (a.pathname.match(/\/([^\/?#]+)$/i)),
+        hash: a.hash.replace('#', ''),
+        path: a.pathname.replace(/^([^\/])/, '/$1'),
+        relative: (a.href.match(/tps?:\/\/[^\/]+(.+)/) || [, ''])[1],
+        segments: a.pathname.replace(/^\//,'').split('/')
+    };
+}
+```
+
+# 实现一个事件收发器Event类， 继承自此类的对象拥有on， off， once和trigger方法
+
+```js
+function Event() {
+    if (!(this instanceof Event)) {
+        return new Event();
+    }
+    this._callbacks = {};
+}
+Event.prototype.on = function(type, handler) {
+    this._callbacks = this._callbacks || {};
+    this._callbacks[type] = this._callbacks[type] || [];
+    this._callbacks[type].push(handler);
+    return this;
+};
+Event.prototype.off = function(type, handler) {
+    let list = this._callbacks[type];
+    if (list) {
+        for (let i = list.length; i >= 0; --i) {
+            if (list[i] === handler) {
+                list.splice(i, 1);
+            }
+        }
+    }
+};
+Event.prototype.trigger = function(type, data) {
+    let list = this._callbacks[type];
+    if (list) {
+        for (let i = 0, len = list.length; i < len; ++i) {
+            list[i].call(this, data);
+        }
+    }
+};
+Event.prototype.once = function(type, handler) {
+    let self = this;
+    function wrapper() {
+        handler.apply(self, arguments);
+        self.off(type, wrapper);
+    }
+    this.on(type, wrapper);
+    return this;
+}
+```
+
+# 实现一个deepEqual函数， 判断两个输入参数是否相等（对于对象或者数组需要深度比对）
+
+```js
+function deepEqual(x, y) {
+    if (x === y) {
+        return true;
+    }
+    if (typeof x !== 'object' || x === null || typeof y !== 'object' || y === null) {
+        return false;
+    }
+    if (Object.keys(x).length !== Object.keys(y).length) {
+        return false;
+    }
+    for (let prop in x) {
+        if (y.hasOwnProperty(prop)) {
+            if (!deepEqual(x[prop], y[prop])) {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+    return true;
+}
+```
+
+# 实现一个parseUrl函数，解析输入url字符串的所有参数
+
+```js
+function parseUrl(url) {
+    const res = {};
+    if (typeof url !== 'string') {
+        return res;
+    }
+    const a = document.createElement('a');
+    a.href = url;
+    const search = a.search.replace(/^\?/, '');
+    if (!search) {
+        return res;
+    }
+    const paramStrArr = search.split('&');
+    for (let i = 0; i < paramStrArr.length; i++) {
+        const tempRes = paramStrArr[i].split('=');
+        if (tempRes[0] && tempRes[1]) {
+            res[tempRes[0]] = decodeURIComponent(tempRes[1]);
+        }
+    }
+    return res;
+}
+```
+
+# 实现一个EventBus
+
+```js
+class EventBus {
+    constructor() {
+        this.eventList = new Map();
+    }
+    $emit(evName, ...args) {
+        let fn = this.eventList.get(evName);
+        if(!fn) {
+            console.error(`'${evName}' is undefined`);
+            return;
+        }
+        this.eventList.get(evName).apply(this, args);
+    }
+    $on(evName, fn) {
+        // 防止相同事件重复监听
+        if(this.eventList.get(evName)) {
+            console.error(`duplicated event name : '${evName}'`);
+            return;
+        }
+        this.eventList.set(evName, fn);
+        return {
+            remove: () => {
+                this.eventList.delete(evName); // 提供delete事件
+            }
+        };
+    }
+}
+var eventBus = new EventBus();
+eventBus.$on("receive", function(params) {
+    console.log(`${params}`);
+});
+eventBus.$emit("receive", "test"); // 打印出test
+```
+
+
+# service worker 如何实现离线缓存？
+
+SW介于服务器和网页之间的拦截器,能够拦截进出的HTTP请求,从而完全控制你的网站.
+
+主要的特点:
+
+1. 在页面中注册安装成功后,运行于浏览器后台,不受页面刷新的影响;
+
+2. 网站必须使用HTTPS
+
+3. 可以控制打开的作用域范围下所有的页面请求
+
+4. 单独的作用域范围,单独的运行环境和执行线程
+
+5. 不能操作页面的DOM,但可以通过事件机制来处理
+
+6. 事件驱动型服务线程
+
+执行流程:
+
+1. 调用register()函数时,SW开始下载;
+
+2. 在注册过程中,浏览器会下载、解析并执行SW;
+
+3. 一旦SW成功执行,install事件就会激活;
+4. 安装完成之后,SW便会激活,并控制在其范围内的一切.
