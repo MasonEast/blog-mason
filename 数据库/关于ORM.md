@@ -1,0 +1,3 @@
+# ORM技术：Object-Relational Mapping，把关系数据库的表结构映射到对象上。
+
+可以使用Node的ORM框架Sequelize操作数据库。这样，我们读写的都是JavaScript对象，Sequelize帮我们把对象变成数据库中的行。
