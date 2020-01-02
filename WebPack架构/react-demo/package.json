@@ -1,0 +1,48 @@
+{
+  "name": "200102",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "build": "cross-env NODE_ENV=production webpack --config webpack.prod.js",
+    "build2": "webpack --config webpack.config2.js",
+    "dev": "cross-env NODE_ENV=development webpack-dev-server --config webpack.dev.js --open",
+    "dll": "webpack --config webpack.dll.config.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@babel/core": "^7.7.7",
+    "@babel/plugin-transform-runtime": "^7.7.6",
+    "@babel/preset-env": "^7.7.7",
+    "@babel/preset-react": "^7.7.4",
+    "autoprefixer": "^9.7.3",
+    "babel-loader": "^8.0.6",
+    "babel-plugin-import": "^1.13.0",
+    "clean-webpack-plugin": "^3.0.0",
+    "copy-webpack-plugin": "^5.1.1",
+    "cross-env": "^6.0.3",
+    "css-loader": "^3.4.0",
+    "happypack": "^5.0.1",
+    "html-webpack-plugin": "^3.2.0",
+    "less": "^3.10.3",
+    "less-loader": "^5.0.0",
+    "mini-css-extract-plugin": "^0.9.0",
+    "optimize-css-assets-webpack-plugin": "^5.0.3",
+    "postcss-loader": "^3.0.0",
+    "style-loader": "^1.1.2",
+    "terser-webpack-plugin": "^2.3.1",
+    "uglifyjs-webpack-plugin": "^2.2.0",
+    "webpack": "^4.41.5",
+    "webpack-cli": "^3.3.10",
+    "webpack-dev-server": "^3.10.1",
+    "webpack-merge": "^4.2.2",
+    "webpack-parallel-uglify-plugin": "^1.1.2"
+  },
+  "dependencies": {
+    "antd": "^3.26.5",
+    "react": "^16.12.0",
+    "react-dom": "^16.12.0"
+  }
+}
