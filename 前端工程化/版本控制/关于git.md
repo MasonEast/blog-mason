@@ -129,7 +129,7 @@ git add .           //批量跟踪
 ```js
 git commit              //提交文件到本地仓库
 git commit -m 'xxx'     //xxx是你本次提交的信息说明
-git commit -am 'xxx'    //将所有已跟踪的文件暂存起来一并提交
+git commit -am 'xxx'
 ```
 
 - 推送远程仓库
