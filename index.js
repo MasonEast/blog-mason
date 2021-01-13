@@ -1,72 +1,46 @@
-/*
- * @Description: 
- * @Date: 2021-01-10 10:26:07
- * @Author: mason
- */
-/**
- * 题目2： 对象扁平化，不考虑环引用的情况
- * 说明：请实现 flatten(input) 函数，input 为一个 javascript 对象（Object 或者 Array），返回值为扁平化后的结果。
- * 示例：
- *   const input = {
- *     a: 1,
- *     b: [ 1, 2, { c: true }, [ 3 ] ],
- *     d: { e: 2, f: 3 },
- *     g: null, 
- *   }
- *
- *   const output = flatten(input);
- *   
- *   output:
- *   {
- *     "a": 1,
- *     "b[0]": 1,
- *     "b[1]": 2,
- *     "b[2].c": true,
- *     "b[3][0]": 3,
- *     "d.e": 2,
- *     "d.f": 3,
- *     // "g": null,  值为null或者undefined，丢弃
- *  }
- */
 
-const flatten = (obj, key, type) => {
-    let res = {}
-
-    for (let i in obj) {
-        let rKey = i
-        if (key) {
-            switch (type) {
-                case 'array':
-                    rKey = `${key}[${i}]`
-                    break
-                case 'object':
-                    rKey = `${key}.${i}`
-                    break
-            }
+// let arr = [], index = 0
+// function bst (tree, index) {
+//     arr.push(tree.value)
+//     if (tree.left) {
+//         bst(tree.left, index++);
+//     }
+//     if (tree.right) {
+//         bst(tree.right);
+//     }
+// }
+var tree = {
+    value: 1,
+    left: {
+        value: 2,
+        left: {
+            value: 5
+        },
+        right: {
+            value: 6
         }
-        if (Array.isArray(obj[i])) {
-
-            Object.assign(res, flatten(obj[i], rKey, 'array'))
-
-        } else if (Object.prototype.toString.call(obj[i]) === '[object Object]') {
-
-            Object.assign(res, flatten(obj[i], rKey, 'object'))
-
-        } else {
-            if (obj[i] !== null && obj[i] !== undefined) {
-                res[rKey] = obj[i]
-            }
+    },
+    right: {
+        value: 3,
+    }
+}
+let arr = []
+var levelOrderTraversal = function (tree) {
+    if (!tree) {
+        return
+    }
+    var que = []
+    que.push(tree)
+    while (que.length !== 0) {
+        tree = que.shift()
+        arr.push(tree.value)
+        console.log(que)
+        if (tree.left) {
+            que.push(tree.left)
+        }
+        if (tree.right) {
+            que.push(tree.right)
         }
     }
-    return res
 }
-
-const input = {
-    a: 1,
-    b: [1, 2, { c: true }, [3, [4]]],
-    d: { e: 2, f: 3, h: { hh: '333' } },
-    g: null,
-}
-
-const output = flatten(input);
-console.log(output)
+levelOrderTraversal(tree)
