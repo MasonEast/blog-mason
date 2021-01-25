@@ -226,12 +226,12 @@ this指的是当前正在执行或调用该函数的对象的值。 this值的�
 ```js
 function debounce(func, delay) {
     let tiemout;
-    return function(e) {
-        clearTimeout(timeout)   //这里就是保证回调一直执行,setTimeout里面的就不执行
-        let context = this.args = arguments
+    return function() {
+        clearTimeout(timeout)  
+        let context = this, args = arguments
         timeout = setTimeout(() => {
             func.apply(context, args)
-        }, delay)               // 等到用户不在触发debounce,那么setTimeout就自然执行里面的方法
+        }, delay)              
     }
 }
 ```
@@ -241,11 +241,11 @@ function debounce(func, delay) {
 ```js
 function throttle(fn, threshhold) {
     var timeout;
-    var start = new Date; // 事件触发时间点
+    var start = Date.now(; // 事件触发时间点
     var threshhold = threshhold || 160; // 控制单位时间
     return function() {
-        var context = this.args = arguments;
-        var curr = new Date() - 0; // 时间触发结束点
+        var context = this, args = arguments;
+        var curr = Date.now(); // 时间触发结束点
         clearTimeout(timeout); // 总是干掉事件回调
         if (curr - start >= threshhold) {
             fn.apply(context, args); // 只执行一部分方法,这些方法是在某个时间段内执行一次.
