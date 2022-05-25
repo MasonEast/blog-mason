@@ -83,3 +83,37 @@ const p2 = new MyPromise(function (resolve, reject) {
 });
 
 p2.then((result) => console.log(result)).catch((error) => console.log(error));
+
+Promise.myAll = (list) => {
+  return new Promise((resolve, reject) => {
+    let result = [];
+    let count = 0;
+    list.forEach((p, i) => {
+      // 可能会出现 非promise
+      Promise.resolve(p)
+        .then((res) => {
+          result[i] = res;
+          console.log("res", res);
+          console.log("result", result, result.length);
+          console.log("count", count);
+          count++;
+          if (count == list.length) resolve(result); // 不能拿 list.length === result.length 做结束条件,因为 length是根据最大值来的,有了2|3 就直接认定长度是2|3了.坑在这里了
+        })
+        .catch(reject);
+    });
+  });
+};
+
+Promise.myAll([1, Promise.resolve(2), Promise.reject(3)])
+  .then((v) => console.log(v))
+  .catch((v) => console.log(v)); // 3
+Promise.myAll([
+  new Promise((res) => setTimeout(() => res(1), 5000)),
+  2,
+  Promise.resolve(3),
+])
+  .then((v) => console.log(v))
+  .catch((err) => console.log(err)); // [1, 2, 3]
+Promise.myAll([Promise.resolve(1), 2]).then((res) => {
+  console.log(res);
+}); // [1, 2]
