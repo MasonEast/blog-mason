@@ -40,6 +40,44 @@ function _new() {
   return flag ? result : newObject;
 }
 
+// reduce
+
+Array.prototype._reudce = function (fn, initialValue) {
+  const arr = [].concat(this);
+  if (!arr.length) return;
+
+  let pre = initialValue ? initialValue : null;
+  for (let i = 0; i < arr.length; i++) {
+    pre = fn.call(null, pre, arr[i], i, this);
+  }
+  return pre;
+};
+
+// call
+
+Function.prototype.call = function (context, ...args) {
+  context = context || global;
+  const fn = Symbol("fn");
+
+  context[fn] = this;
+  context[fn](...args);
+
+  delete context[fn];
+};
+
+// bind
+
+Function.prototype.bind = function (context = window || global, ...args) {
+  const fn = Symbol("fn");
+  context[fn] = this;
+
+  return function (..._args) {
+    args = args.concat(_args);
+    context[fn](...args);
+    delete context[fn];
+  };
+};
+
 // Promise
 
 class _Promise {
@@ -114,27 +152,44 @@ class _Promise {
   }
 }
 
-// call
+// Promise all
 
-Function.prototype._call = function (ctx = window || global) {
-  ctx.fn = this;
-  const args = [...arguments].slice(1);
-  const result = ctx.fn(...args);
-  delete ctx.fn;
-  return result;
+Promise.myAll = (list) => {
+  return new Promise((resolve, reject) => {
+    let result = [];
+    let count = 0;
+    list.forEach((p, i) => {
+      // 可能会出现 非promise
+      Promise.resolve(p)
+        .then((res) => {
+          result[i] = res;
+          console.log("res", res);
+          console.log("result", result, result.length);
+          console.log("count", count);
+          count++;
+          if (count == list.length) resolve(result); // 不能拿 list.length === result.length 做结束条件,因为 length是根据最大值来的,有了2|3 就直接认定长度是2|3了.坑在这里了
+        })
+        .catch(reject);
+    });
+  });
 };
 
-// bind
+// instanceof
 
-Function.prototype._bind = function (ctx = window || global) {
-  ctx.fn = this;
-  const args = [...arguments].slice(1);
+function myInstanceof(left, right) {
+  // 获取对象的原型
+  let proto = Object.getPrototypeOf(left);
+  // 获取构造函数的 prototype 对象
+  let prototype = right.prototype;
 
-  return function (...args2) {
-    ctx.fn(...args.concat(args2));
-    delete ctx.fn;
-  };
-};
+  // 判断构造函数的 prototype 对象是否在对象的原型链上
+  while (true) {
+    if (!proto) return false;
+    if (proto === prototype) return true;
+    // 如果没有找到，就继续从其原型上找，Object.getPrototypeOf方法用来获取指定对象的原型
+    proto = Object.getPrototypeOf(proto);
+  }
+}
 
 // 柯里化
 
@@ -192,4 +247,54 @@ function getType(value) {
   return Object.prototype.toString
     .call(value)
     .replace(/^\[object (\S+)\]$/, "$1");
+}
+
+// 浅拷贝
+
+function shallowCopy(obj) {
+  let result;
+  if (typeof obj === "object") {
+    for (let i in obj) {
+      result[i] = obj[i];
+    }
+  } else {
+    result = obj;
+  }
+  return result;
+}
+
+// 深拷贝
+
+function deepCopy(obj) {
+  let result;
+  if (typeof obj === "object") {
+    result = obj.constructor === Array ? [] : {};
+    for (let i in obj) {
+      result[i] = typeof obj[i] === "object" ? deepCopy(obj[i]) : obj[i];
+    }
+  } else {
+    result = obj;
+  }
+  return result;
+}
+
+// lodash get
+
+function get(object, path, defaultVal = "undefined") {
+  // 先将path处理成统一格式
+  let newPath = [];
+  if (Array.isArray(path)) {
+    newPath = path;
+  } else {
+    // 先将字符串中的'['、']'去除替换为'.'，split分割成数组形式
+    newPath = path.replace(/\[/g, ".").replace(/\]/g, "").split(".");
+  }
+
+  // 递归处理，返回最后结果
+  return (
+    newPath.reduce((o, k) => {
+      console.log(o, k); // 此处o初始值为下边传入的 object，后续值为每次取的内部值
+      return (o || {})[k];
+    }, object) || defaultVal
+  );
 }
