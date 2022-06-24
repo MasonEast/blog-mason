@@ -1,4 +1,4 @@
-// Object.creaate
+// Object.create
 
 function _create(obj) {
   function F() {}
@@ -8,17 +8,20 @@ function _create(obj) {
 
 // instanceof
 
-function _instanceoof(left, right) {
-  let proto = Object.getPrototypeOf(left),
-    prototype = right.prototype;
+function _instanceof(left, right) {
+  // 获取对象的原型
+  let proto = Object.getPrototypeOf(left);
+  // 获取构造函数的 prototype 对象
+  let prototype = right.prototype;
 
+  // 判断构造函数的 prototype 对象是否在对象的原型链上
   while (true) {
     if (!proto) return false;
     if (proto === prototype) return true;
+    // 如果没有找到，就继续从其原型上找，Object.getPrototypeOf方法用来获取指定对象的原型
     proto = Object.getPrototypeOf(proto);
   }
 }
-
 // new
 // _new(构造函数, 初始化参数)
 function _new() {
@@ -67,7 +70,8 @@ Function.prototype.call = function (context, ...args) {
 
 // bind
 
-Function.prototype.bind = function (context = window || global, ...args) {
+Function.prototype.bind = function (context, ...args) {
+  context = context || global;
   const fn = Symbol("fn");
   context[fn] = this;
 
@@ -163,38 +167,40 @@ Promise.myAll = (list) => {
       Promise.resolve(p)
         .then((res) => {
           result[i] = res;
-          console.log("res", res);
+          console.log("res", res, list.length, count);
           console.log("result", result, result.length);
           console.log("count", count);
           count++;
-          if (count == list.length) resolve(result); // 不能拿 list.length === result.length 做结束条件,因为 length是根据最大值来的,有了2|3 就直接认定长度是2|3了.坑在这里了
+          if (count === list.length) resolve(result); // 不能拿 list.length === result.length 做结束条件,因为 length是根据最大值来的,有了2|3 就直接认定长度是2|3了.坑在这里了
         })
         .catch(reject);
     });
   });
 };
 
-// instanceof
-
-function myInstanceof(left, right) {
-  // 获取对象的原型
-  let proto = Object.getPrototypeOf(left);
-  // 获取构造函数的 prototype 对象
-  let prototype = right.prototype;
-
-  // 判断构造函数的 prototype 对象是否在对象的原型链上
-  while (true) {
-    if (!proto) return false;
-    if (proto === prototype) return true;
-    // 如果没有找到，就继续从其原型上找，Object.getPrototypeOf方法用来获取指定对象的原型
-    proto = Object.getPrototypeOf(proto);
-  }
-}
-
 // 柯里化
 
 function curry(fn, ...args) {
   return fn.length <= args.length ? fn(...args) : curry.bind(null, fn, ...args);
+}
+
+function toCurry(func, ...args) {
+  // ↑需要柯里化的函数作为参数
+  // ↑也可以有初始参数传入
+  // ↑缓存在args中
+  return function () {
+    // 合并上一次缓存的参数和本次传入的参数
+    args = [...args, ...arguments];
+    // 判断参数数量是否足够
+    if (args.length < func.length) {
+      // 如果不够，继续递归
+      // 注意，这里每一次递归都会形成新的闭包
+      // 保证柯里化函数每一步调用都是独立的，互不影响
+      return toCurry(func, ...args);
+    }
+    // 如果参数满足数量，执行函数并返回结果
+    else return func.apply(null, args);
+  };
 }
 
 // 防抖
