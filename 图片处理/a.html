@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>canvas-抠图测试</title>
+  </head>
+  <body>
+    <!-- 商品 -->
+    <!-- <img id='mask' width="1024" height="682" crossOrigin src="https://matting-batch.dancf.com/matting/f11d26c1611613be-20220315154323636.png" />
+    <img id='source' width="1024" height="682" crossOrigin src="https://gd-filems.dancf.com/gaoding/gaoding/56406/f02eaf63-f3bb-49ac-b7ce-5b2c0de9d4ce35398314.jpg"/> -->
+    <!-- 人像 -->
+    <img
+      id="mask"
+      width="1000"
+      height="1000"
+      crossorigin
+      src="https://matting-batch.dancf.com/matting/7ab866edd2699a38-20220315171838594.png"
+    />
+    <img
+      id="source"
+      width="1000"
+      height="1000"
+      crossorigin
+      src="https://matting-batch.dancf.com/yunzheng/test/passport.jpg"
+    />
+    <canvas id="canvas"></canvas>
+    <script>
+      const maskImg = document.getElementById("mask");
+
+      // 创建一个 canvas 用来绘制 mask 图片
+      const maskCanvas = document.createElement("canvas");
+      const maskCtx = maskCanvas.getContext("2d");
+      maskCanvas.width = maskImg.width;
+      maskCanvas.height = maskImg.height;
+      // 图片加载完毕标识
+      let maskLoaded = false;
+      // 当页面加载完毕后，图片开始加载时，开始画布绘制
+      maskImg.onload = function () {
+        maskLoaded = true;
+        // drawImage() 不支持直接传入 uint8Array、uint8ClampedArray 等像素矩阵数据
+        maskCtx.drawImage(maskImg, 0, 0);
+        // 获取图片的 imageData, imageData 的数据本身是像素点组成的数组 uint8ClampedArray, 结构为[R,G,B,A,R,G,B,A,...]
+        let maskData = maskCtx.getImageData(
+          0,
+          0,
+          maskCanvas.width,
+          maskCanvas.height
+        );
+        for (let i = 0; i < maskData.data.length; i += 4) {
+          const r = maskData.data[i];
+          // 修改 alpha 通道值，使得黑色区域透明，方便合图操作
+          maskData.data[i + 3] = r;
+        }
+        // 将修改后的像素矩阵重新绘制到画布上
+        maskCtx.putImageData(maskData, 0, 0);
+        checkLoading();
+      };
+
+      // 创建一个 canvas 来绘制原图
+      const sourceCanvas = document.createElement("canvas");
+      const sourceCtx = sourceCanvas.getContext("2d");
+      const sourceImg = document.getElementById("source");
+      sourceCanvas.width = sourceImg.width;
+      sourceCanvas.height = sourceImg.height;
+      let sourceLoaded = false;
+
+      sourceImg.onload = function () {
+        sourceLoaded = true;
+        sourceCtx.drawImage(sourceImg, 0, 0);
+        checkLoading();
+      };
+
+      // 确认原图和 mask 图已加载，进行抠图操作
+      function checkLoading() {
+        if (maskLoaded && sourceLoaded) {
+          const resultCanvas = document.getElementById("canvas");
+          resultCanvas.width = sourceImg.width;
+          resultCanvas.height = sourceImg.height;
+          const resultCtx = resultCanvas.getContext("2d");
+          // 将 mask 画布内容绘制到新画布上
+          resultCtx.drawImage(maskCanvas, 0, 0);
+          // 关键步骤: 组合操作
+          resultCtx.globalCompositeOperation = "source-in";
+          // 将原图画布内容绘制到新画布上
+          resultCtx.drawImage(sourceCanvas, 0, 0);
+        }
+      }
+    </script>
+  </body>
+</html>

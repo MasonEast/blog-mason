@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Canvas图片处理演示</title>
+</head>
+<style>
+  #input-img {
+    max-width: 400px;
+}
+
+#input-upload {
+    width: 200px;
+}
+/* 图片背景纹理 */
+.img-container {
+    font-size: 0;
+    background-image: -webkit-gradient(linear, 0 0, 100% 100%, color-stop(.25, #ccc), color-stop(.25, transparent), to(transparent)),-webkit-gradient(linear, 0 100%, 100% 0, color-stop(.25, #ccc), color-stop(.25, transparent), to(transparent)),-webkit-gradient(linear, 0 0, 100% 100%, color-stop(.75, transparent), color-stop(.75, #ccc)),-webkit-gradient(linear, 0 100%, 100% 0, color-stop(.75, transparent), color-stop(.75, #ccc));
+    background-size: 10px 10px;
+}
+
+.err {
+    border: 1px solid red;
+}
+</style>
+<body>
+    <!-- 用于输入本地文件和远程URL -->
+    <input type="file" id="input-upload" accept=".jpg,.jpeg,.png,.gif,.svg" placeholder="上传本地图片" />
+    <input type="text" id="input-url" placeholder="输入图片URL"></input>
+    <!-- 图片处理前后展示 -->
+    <p>原图：</p>
+    <div class="img-container"><img id="input-img"></div>
+    <p>画布：</p>
+    <div class="img-container">
+        <canvas id="my-canvas"></canvas>
+    </div>
+    <a href="void(0);" id="download">点我下载</a>
+</body>
+<script>
+  // 我们使用两个输入框来引入本地资源和线上资源
+const oUpload = document.getElementById('input-upload');
+const oInput = document.getElementById('input-url');
+// 除此之外还需要一个img标签来加载数据和进行展示
+const oImg = document.getElementById('input-img');
+
+// 注: 加载图片的img标签不一定需要放到页面上
+
+oUpload.onchange = loadFile;
+oInput.onchange = loadUrl;
+
+// 读取本地文件
+function loadFile(e) {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = onFileLoad;
+    reader.readAsDataURL(file);
+}
+
+// 读取输入URL
+function loadUrl(e) {
+    oInput.classList.remove('err')
+    const url = e.target.value;
+    onFileLoad(url);
+}
+
+// 加载图片数据
+function onFileLoad(src) {
+    oImg.onload = function() {
+        onImageLoad(oImg)// 这里使用图像数据，后续讲解
+    };
+    oImg.onerror = onImageErr;
+    oImg.src = (src.target ? src.target.result : src);
+}
+
+function onImageErr() {
+    oInput.classList.add('err');
+}
+
+// canvas实例
+const oCanvas = document.getElementById('my-canvas');
+// 上面读取资源的操作后，将图像画到canvas上
+function onImageLoad(img) {
+    const width = oCanvas.width = img.naturalWidth || img.width;
+    const height = oCanvas.height = img.naturalHeight || img.height;
+    const ctx = oCanvas.getContext("2d");
+    ctx.drawImage(img, 0, 0);
+
+    // 获取画布像素信息
+    const imageData = ctx.getImageData(0, 0, width, height);
+
+    // 一个像素点由RGBA四个值组成，data为[R,G,B,A [,R,G,B,A[...]]]组成的一维数组
+    // 可以通过修改该数组的数据，达到修改图片内容的目的
+    const data = imageData.data;
+    filter(data);// 这里对图像数据进行处理
+
+    // 把新的内容画进画布里
+    ctx.putImageData(imageData, 0, 0);
+}
+
+// 一个A标签，让用户点击用的
+const oDownload = document.getElementById('download');
+// 从画布上读取数据并保存到本地
+function setDownLoad(fileName) {
+    const url  = oCanvas.toDataURL();
+    oDownload.setAttribute('href', url);
+    oDownload.setAttribute('target', '_blank');
+
+    if (fileName) {
+        oDownload.setAttribute('download', fileName);
+    }
+}
+
+function filter(data) {
+    for (let i = 0; i < data.length; i += 4) {
+        let r = data[i],
+            g = data[i + 1],
+            b = data[i + 2];
+
+        // 色值在250-256之间都认为是白色
+        if ([r, g, b].every(v => v < 256 && v > 250)) {
+            data[i + 3] = 0; // 把白色改成透明的  
+        }
+    }
+}
+</script>
+</html>
