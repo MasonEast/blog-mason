@@ -1,46 +1,38 @@
+const bool = true
 
-// let arr = [], index = 0
-// function bst (tree, index) {
-//     arr.push(tree.value)
-//     if (tree.left) {
-//         bst(tree.left, index++);
-//     }
-//     if (tree.right) {
-//         bst(tree.right);
-//     }
-// }
-var tree = {
-    value: 1,
-    left: {
-        value: 2,
-        left: {
-            value: 5
-        },
-        right: {
-            value: 6
-        }
-    },
-    right: {
-        value: 3,
-    }
+const a = new Promise((resolve, reject) => {
+  if(bool){
+     return resolve(1)
+  }else {
+    return reject()
+  }
+})
+
+const fn = async() => {
+  const d = await new Promise((resolve, reject) => {
+    setTimeout(async() => {
+      const res = await a 
+      console.log(res ? res : "error")
+      return res ? resolve(res) : reject("time抛出错误")
+    }, 3000);
+  })
+  console.log(d)
+  return d
 }
-let arr = []
-var levelOrderTraversal = function (tree) {
-    if (!tree) {
-        return
-    }
-    var que = []
-    que.push(tree)
-    while (que.length !== 0) {
-        tree = que.shift()
-        arr.push(tree.value)
-        console.log(que)
-        if (tree.left) {
-            que.push(tree.left)
-        }
-        if (tree.right) {
-            que.push(tree.right)
-        }
-    }
+
+function validate(input) { 
+  // todo
+  if(Number(input) % 1 === 0) {
+    return input
+  }else {
+    throw new Error("只能输入整数")
+  }
+
 }
-levelOrderTraversal(tree)
+
+// 1
+try { 
+  validate('12.9')
+} catch (e) { 
+  console.log(e.message) // 只能输入整数
+}
